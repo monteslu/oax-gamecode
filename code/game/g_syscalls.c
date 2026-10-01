@@ -789,3 +789,14 @@ int trap_PC_ReadToken( int handle, pc_token_t *pc_token ) {
 int trap_PC_SourceFileAndLine( int handle, char *filename, int *line ) {
 	return syscall( BOTLIB_PC_SOURCE_FILE_AND_LINE, handle, filename, line );
 }
+
+/* oax engine extensions (oax_public.h); check BG_OAXFeature() first */
+#include "oax_public.h"
+
+void trap_OAX_DebugSet( const char *name, const char *value ) {
+	syscall( G_OAX_DEBUG_SET, name, value );
+}
+
+int trap_OAX_BSPXRead( const char *lump, void *buf, int size ) {
+	return syscall( G_OAX_BSPX_READ, lump, buf, size );
+}

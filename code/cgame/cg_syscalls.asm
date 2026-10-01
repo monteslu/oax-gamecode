@@ -105,3 +105,7 @@ equ	testPrintFloat				-111
 equ acos						-112
 equ trap_R_LFX_ParticleEffect	-113
 equ trap_R_GetViewPosition		-114
+
+; oax engine extensions (oax_public.h): number N is equ -(N+1)
+equ trap_OAX_DebugSet			-1001
+equ trap_OAX_BSPXRead			-1002

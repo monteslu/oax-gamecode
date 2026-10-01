@@ -2520,6 +2520,8 @@ void CG_Init(int serverMessageNum, int serverCommandSequence, int clientNum) {
 	addChallenge(GENERAL_TEST);
 
 	trap_S_ClearLoopingSounds(qtrue);
+
+	CG_OAXInit();
 #ifdef SCRIPTHUD
 	trap_Cvar_Set("ui_loading", "0");
 	cg.consoleValid = qtrue;

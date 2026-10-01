@@ -2286,6 +2286,8 @@ $(B)/$(SERVERBIN)$(FULLBINEXT): $(Q3DOBJ)
 ## BASEQ3 CGAME
 #############################################################################
 
+include oax.mk
+
 Q3CGOBJ_ = \
   $(B)/$(BASEGAME)/cgame/cg_main.o \
   $(B)/$(BASEGAME)/cgame/bg_misc.o \
@@ -2311,6 +2313,7 @@ Q3CGOBJ_ = \
   $(B)/$(BASEGAME)/cgame/cg_unlagged.o \
   $(B)/$(BASEGAME)/cgame/cg_view.o \
   $(B)/$(BASEGAME)/cgame/cg_weapons.o \
+  $(OAX_CGOBJ) \
   \
   $(B)/$(BASEGAME)/qcommon/q_math.o \
   $(B)/$(BASEGAME)/qcommon/q_shared.o
@@ -2356,6 +2359,7 @@ MPCGOBJ_ = \
   $(B)/$(MISSIONPACK)/cgame/cg_unlagged.o \
   $(B)/$(MISSIONPACK)/cgame/cg_view.o \
   $(B)/$(MISSIONPACK)/cgame/cg_weapons.o \
+  $(OAX_MPCGOBJ) \
   $(B)/$(MISSIONPACK)/ui/ui_shared.o \
   \
   $(B)/$(MISSIONPACK)/qcommon/q_math.o \
@@ -2420,6 +2424,7 @@ Q3GOBJ_ = \
   $(B)/$(BASEGAME)/game/g_utils.o \
   $(B)/$(BASEGAME)/game/g_vote.o \
   $(B)/$(BASEGAME)/game/g_weapon.o \
+  $(OAX_GOBJ) \
   \
   $(B)/$(BASEGAME)/qcommon/q_math.o \
   $(B)/$(BASEGAME)/qcommon/q_shared.o
@@ -2481,6 +2486,7 @@ MPGOBJ_ = \
   $(B)/$(MISSIONPACK)/game/g_utils.o \
   $(B)/$(MISSIONPACK)/game/g_vote.o \
   $(B)/$(MISSIONPACK)/game/g_weapon.o \
+  $(OAX_MPGOBJ) \
   \
   $(B)/$(MISSIONPACK)/qcommon/q_math.o \
   $(B)/$(MISSIONPACK)/qcommon/q_shared.o

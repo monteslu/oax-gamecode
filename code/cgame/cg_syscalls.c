@@ -454,3 +454,14 @@ qboolean trap_GetEntityToken( char *buffer, int bufferSize ) {
 qboolean trap_R_inPVS( const vec3_t p1, const vec3_t p2 ) {
 	return syscall( CG_R_INPVS, p1, p2 );
 }
+
+/* oax engine extensions (oax_public.h); check BG_OAXFeature() first */
+#include "../game/oax_public.h"
+
+void trap_OAX_DebugSet( const char *name, const char *value ) {
+	syscall( CG_OAX_DEBUG_SET, name, value );
+}
+
+int trap_OAX_BSPXRead( const char *lump, void *buf, int size ) {
+	return syscall( CG_OAX_BSPX_READ, lump, buf, size );
+}

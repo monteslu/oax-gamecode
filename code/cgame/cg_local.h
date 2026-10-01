@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../renderer/tr_types.h"
 #include "../game/bg_public.h"
 #include "cg_public.h"
+#include "../game/oax_public.h"
 
 #include "../game/challenges.h"
 
@@ -2055,3 +2056,8 @@ void	trap_R_GetViewPosition( vec3_t point );
 #define LFX_FLASHPROX		70;
 #define LFX_FLASHVULCAN		71;
 
+/* cg_oax.c: oax map features */
+void CG_OAXInit( void );
+void CG_OAXFrame( void );
+void trap_OAX_DebugSet( const char *name, const char *value );
+int trap_OAX_BSPXRead( const char *lump, void *buf, int size );

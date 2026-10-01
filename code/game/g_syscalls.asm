@@ -223,3 +223,7 @@ equ trap_BotLibFreeSource				-580
 equ trap_BotLibReadToken				-581
 equ trap_BotLibSourceFileAndLine		-582
  
+
+; oax engine extensions (oax_public.h): number N is equ -(N+1)
+equ trap_OAX_DebugSet					-1001
+equ trap_OAX_BSPXRead					-1002

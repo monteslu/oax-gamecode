@@ -1002,6 +1002,8 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 	}
 	CG_AddViewWeapon( &cg.predictedPlayerState );
 
+	CG_OAXFrame();
+
 	// add buffered sounds
 	CG_PlayBufferedSounds();
 

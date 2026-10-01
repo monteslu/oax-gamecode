@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/q_shared.h"
 #include "bg_public.h"
 #include "g_public.h"
+#include "oax_public.h"
 #include "challenges.h"
 
 //==================================================================
@@ -1431,4 +1432,15 @@ void MapInfoPrint(mapinfo_result_t *info);
 
 void monster_die (gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int damage, int mod);
 
+/* g_oax.c: oax map features */
+void G_OAXInit( int levelTime, int randomSeed, int restart );
+void G_OAXRunFrame( int levelTime );
+void G_OAXShutdown( int restart );
+void trap_OAX_DebugSet( const char *name, const char *value );
+int trap_OAX_BSPXRead( const char *lump, void *buf, int size );
+const char *G_OAXManifest( void );
 
+/* g_oax_stats.c: match statistics for map validation */
+void G_OAXStatsInit( void );
+void G_OAXStatsFrame( void );
+void G_OAXItemReached( gentity_t *item );

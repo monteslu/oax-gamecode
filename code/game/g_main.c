@@ -871,6 +871,8 @@ void G_InitGame( int levelTime, int randomSeed, int restart )
 
 	G_RemapTeamShaders();
 
+	G_OAXInit( levelTime, randomSeed, restart );
+
 	trap_SetConfigstring( CS_INTERMISSION, "" );
 
 	//elimination:
@@ -950,6 +952,7 @@ G_ShutdownGame
 */
 void G_ShutdownGame( int restart )
 {
+	G_OAXShutdown( restart );
 	G_Printf ("==== ShutdownGame ====\n");
 
 	if ( level.logFile ) {
@@ -2599,6 +2602,8 @@ void G_RunFrame( int levelTime )
 
 	// get any cvar changes
 	G_UpdateCvars();
+
+	G_OAXRunFrame( levelTime );
 
 	if( (g_gametype.integer==GT_ELIMINATION || g_gametype.integer==GT_CTF_ELIMINATION) && !(g_elimflags.integer & EF_NO_FREESPEC) && g_elimination_lockspectator.integer>1)
 		trap_Cvar_Set("elimflags",va("%i",g_elimflags.integer|EF_NO_FREESPEC));
