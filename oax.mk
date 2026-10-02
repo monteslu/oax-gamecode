@@ -22,7 +22,10 @@ OAX_GSRC = \
   game/g_oax_warp \
   game/g_oax_ulight \
   game/g_oax_skyportal \
-  game/g_oax_lightstyle
+  game/g_oax_lightstyle \
+  game/bg_oax_phys \
+  game/g_oax_phys \
+  game/g_oax_fx
 
 OAX_CGSRC = \
   cgame/bg_oax \
@@ -33,7 +36,11 @@ OAX_CGSRC = \
   cgame/bg_oax_zone \
   cgame/cg_oax_zone \
   cgame/cg_oax_ulight \
-  cgame/cg_oax_render
+  cgame/cg_oax_render \
+  cgame/bg_oax_phys \
+  cgame/cg_oax_phys \
+  cgame/cg_oax_skel \
+  cgame/cg_oax_fx
 
 OAX_GOBJ = $(OAX_GSRC:%=$(B)/$(BASEGAME)/%.o)
 OAX_CGOBJ = $(OAX_CGSRC:%=$(B)/$(BASEGAME)/%.o)
@@ -46,13 +53,44 @@ OAX_MPCGOBJ = $(OAX_CGSRC:%=$(B)/$(MISSIONPACK)/%.o)
 OAX_SCRIPT_FILES = $(wildcard script/*.script)
 OAX_SCRIPT_OUT = $(OAX_SCRIPT_FILES:%=$(B)/$(BASEGAME)/%)
 
+# Effect data the cgame uses (phase 6): particle decls (particles/*.prt)
+# and their shaders (scripts/*.shader), copied the same way.
+OAX_FX_FILES = $(wildcard particles/*.prt) $(wildcard scripts/*.shader)
+OAX_FX_OUT = $(OAX_FX_FILES:%=$(B)/$(BASEGAME)/%)
+
 ifneq ($(BUILD_GAME_QVM),0)
   ifneq ($(BUILD_BASEGAME),0)
-    TARGETS += $(OAX_SCRIPT_OUT)
+    TARGETS += $(OAX_SCRIPT_OUT) $(OAX_FX_OUT)
   endif
 endif
 
+$(B)/$(BASEGAME)/particles/%.prt: particles/%.prt
+	@mkdir -p $(dir $@)
+	$(echo_cmd) "CP $@"
+	$(Q)cp $< $@
+
+$(B)/$(BASEGAME)/scripts/%.shader: scripts/%.shader
+	@mkdir -p $(dir $@)
+	$(echo_cmd) "CP $@"
+	$(Q)cp $< $@
+
 $(B)/$(BASEGAME)/script/%.script: script/%.script
+	@mkdir -p $(dir $@)
+	$(echo_cmd) "CP $@"
+	$(Q)cp $< $@
+
+# Player models the oax cgame brings (models/players/*: the skeletal IQM
+# player and its license), copied next to vm/ like the scripts.
+OAX_MODEL_FILES = $(wildcard models/players/*/*)
+OAX_MODEL_OUT = $(OAX_MODEL_FILES:%=$(B)/$(BASEGAME)/%)
+
+ifneq ($(BUILD_GAME_QVM),0)
+  ifneq ($(BUILD_BASEGAME),0)
+    TARGETS += $(OAX_MODEL_OUT)
+  endif
+endif
+
+$(B)/$(BASEGAME)/models/%: models/%
 	@mkdir -p $(dir $@)
 	$(echo_cmd) "CP $@"
 	$(Q)cp $< $@

@@ -844,6 +844,7 @@ void G_InitGame( int levelTime, int randomSeed, int restart )
 	ClearRegisteredItems();
 
 	// parse the key/value pairs and spawn gentities
+	G_OAXFxReset();	/* oax effects: emitter decls, trails (g_oax_fx.c) */
 	G_SpawnEntitiesFromString();
 
 	// general initialization

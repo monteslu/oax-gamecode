@@ -60,6 +60,7 @@ void CG_FreeLocalEntity( localEntity_t *le ) {
 	if ( !le->prev ) {
 		CG_Error( "CG_FreeLocalEntity: not active" );
 	}
+	CG_PhysFreeLocalEntity( le );	// oax: its Box3D body, if it has one
 
 	// remove from the doubly linked active list
 	le->prev->next = le->next;
@@ -363,6 +364,11 @@ CG_AddFragment
 void CG_AddFragment( localEntity_t *le ) {
 	vec3_t	newOrigin;
 	trace_t	trace;
+
+	if ( le->physBody ) {
+		CG_PhysAddFragment( le );	// oax: Box3D moves it (cg_oax_phys.c)
+		return;
+	}
 
 	if ( le->pos.trType == TR_STATIONARY ) {
 		// sink into the ground if near the removal time

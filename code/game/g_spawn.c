@@ -184,6 +184,7 @@ void SP_misc_teleporter_dest (gentity_t *self);
 void SP_misc_model(gentity_t *ent);
 void SP_misc_portal_camera(gentity_t *ent);
 void SP_misc_oax_skyportal(gentity_t *ent);
+void SP_func_oax_emitter( gentity_t *ent );
 void SP_misc_portal_surface(gentity_t *ent);
 
 void SP_shooter_rocket( gentity_t *ent );
@@ -283,6 +284,7 @@ spawn_t	spawns[] = {
 	{"misc_portal_surface", SP_misc_portal_surface},
 	{"misc_portal_camera", SP_misc_portal_camera},
 	{"misc_oax_skyportal", SP_misc_oax_skyportal},
+	{"func_oax_emitter", SP_func_oax_emitter},	/* oax particle emitter (g_oax_fx.c) */
 
 	{"shooter_rocket", SP_shooter_rocket},
 	{"shooter_grenade", SP_shooter_grenade},
@@ -537,6 +539,7 @@ void G_SpawnGEntityFromSpawnVars( void ) {
 		G_FreeEntity( ent );
 	} else {
 		G_OAXSpawnEntity( ent );	// oax: keys oax features read later ("call")
+		G_OAXFxSpawnEntity( ent );	// oax: the oaxtrail key (g_oax_fx.c)
 	}
 }
 

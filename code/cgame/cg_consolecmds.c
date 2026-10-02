@@ -545,6 +545,7 @@ typedef struct {
 } consoleCommand_t;
 
 static consoleCommand_t commands[] = {
+	{ "cg_physTest", CG_PhysTest_f },	// oax: cosmetic physics effects for tests (cg_oax_phys.c)
 	{ "testgun", CG_TestGun_f},
 	{ "testmodel", CG_TestModel_f},
 	{ "nextframe", CG_TestModelNextFrame_f},
@@ -622,7 +623,7 @@ qboolean CG_ConsoleCommand(void) {
 		}
 	}
 
-	return qfalse;
+	return CG_OAXFxConsoleCommand( cmd );	/* oax effect test commands */
 }
 
 /*

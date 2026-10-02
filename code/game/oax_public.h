@@ -49,6 +49,12 @@ shipped; each feature owns a block.
 #define CG_OAX_R_SETVIEWFOG    1012  /* ( const float *rgb, float density, float start, float end ) token "viewfog";
                                         density 0 = off; end > start: linear to `density` (0..1),
                                         else 1 - exp(-density * (dist - start)) */
+/* effects (phase 6), tokens "particles", "decals", "trails" (engine renderergl2 tr_oax_fx*.c) */
+#define CG_OAX_R_REGISTERFX    1013  /* ( const char *particleDecl ) -> handle, 0 if none */
+#define CG_OAX_R_ADDFX         1014  /* ( const oaxFx_t *fx ) -> 1 while alive or to come, 0 once done */
+#define CG_OAX_R_ADDDECAL      1015  /* ( const oaxDecal_t *decal ) -> polygons projected (0 none or off) */
+#define CG_OAX_R_ADDTRAIL      1016  /* ( const oaxTrail_t *trail, const float *points ): x y z ageMs each, newest first */
+#define CG_OAX_R_CLEARDECALS   1017  /* ( void ) */
 #define CG_OAX_S_BASE       1020  /* 1020-1029 zone reverb, occlusion */
 #define CG_OAX_S_SETREVERB  1020  /* ( const char *preset, float decay, float wet ) token "reverb" */
 #define CG_OAX_GUI_BASE     1030  /* 1030-1049 in-world GUIs */
@@ -60,6 +66,46 @@ shipped; each feature owns a block.
 #define CG_OAX_GUI_TRACE         1035  /* ( int inlineModel, origin, angles, start, end, float *xyFrac ) -> hit */
 #define CG_OAX_GUI_CURSOR        1036  /* ( int handle, float x, float y ): cosmetic hover */
 
+
+/* physics, game AND cgame: one block, same numbers (structs in oax_phys.h,
+   traps in bg_oax_phys.h); token "physics", skeleton calls "physics_skel" */
+#define OAX_PHYS_BASE               1200
+#define PHYS_WORLD_CREATE           1200
+#define PHYS_WORLD_DESTROY          1201
+#define PHYS_WORLD_STEP             1202
+#define PHYS_WORLD_ADD_BSP          1203
+#define PHYS_WORLD_ADD_HEIGHTFIELD  1204
+#define PHYS_WORLD_SET_GRAVITY      1205
+#define PHYS_WORLD_STATS            1206
+#define PHYS_WORLD_HASH             1207
+#define PHYS_WORLD_EXPLODE          1208
+#define PHYS_WORLD_CONTACT_EVENTS   1209
+#define PHYS_BODY_CREATE            1210
+#define PHYS_BODY_DESTROY           1211
+#define PHYS_BODY_ADD_SHAPE         1212
+#define PHYS_BODY_SET_TRANSFORM     1213
+#define PHYS_BODY_SET_VELOCITY      1214
+#define PHYS_BODY_APPLY             1215
+#define PHYS_BODY_SET_TARGET        1216
+#define PHYS_BODY_SET_PARAM         1217
+#define PHYS_BODY_GET_STATE         1218
+#define PHYS_BODY_GET_STATES        1219
+#define PHYS_BODY_FROM_BSP_MODEL    1220
+#define PHYS_BODY_GET_MASS          1221
+#define PHYS_RAGDOLL_CREATE         1222
+#define PHYS_JOINT_CREATE           1230
+#define PHYS_JOINT_DESTROY          1231
+#define PHYS_JOINT_SET_PARAM        1232
+#define PHYS_JOINT_GET_PARAM        1233
+#define PHYS_RAYCAST                1240
+#define PHYS_RAYCAST_BATCH          1241
+#define PHYS_SHAPECAST              1242
+#define PHYS_OVERLAP                1243
+#define PHYS_R_MODEL_SKELETON       1250  /* cgame only */
+#define PHYS_R_LERP_SKELETON        1251  /* cgame only */
+#define PHYS_R_ADD_SKELETAL_ENTITY  1252  /* cgame only */
+#define PHYS_R_MODEL_FRAMES         1253  /* cgame only */
+
 /* what a refEntity carries beyond the stock layout (engine tr_types.h) */
 typedef struct {
 	int		guiHandle;			/* client GUI on the entity's "map $gui" stages, 0 = none */
@@ -69,6 +115,43 @@ typedef struct {
 #define CG_OAX_ULIGHT_BASE  1050  /* 1050-1069 unified lighting */
 #define CG_OAX_R_UPDATELIGHTDEF 1050  /* ( int lightOrdinal, const vec3_t origin, const vec3_t axis[3] or NULL,
                                          const vec3_t rgb, const float parms[12] or NULL, int flags: 1 on ) */
+
+/* effects (engine tr_types.h has the same layouts) */
+#define OAXFX_SHADERTIME    0x0001  /* times are on the shader clock (r_fixedShaderTime freezes it) */
+typedef struct {
+	int     handle;
+	int     startTime;          /* ms */
+	int     stopTime;           /* ms, 0 = never */
+	int     seed;
+	int     flags;              /* OAXFX_* */
+	float   origin[3];
+	float   axis[3][3];         /* axis[2] is the decl's up */
+	float   rgba[4];            /* tint, 0 0 0 0 = white */
+	float   scale;              /* 0 = 1 */
+} oaxFx_t;
+
+#define OAXDECAL_ALPHAFADE  0x0001  /* fade alpha, else rgb */
+typedef struct {
+	int     shader;
+	float   origin[3];
+	float   axis[3][3];         /* axis[0] out of the surface; axis[1], axis[2] texture s, t */
+	float   halfSize[3];
+	float   rgba[4];
+	int     startTime;          /* ms (cg.time) */
+	int     lifeMs;             /* 0 = until the cap replaces it */
+	int     fadeMs;
+	int     flags;              /* OAXDECAL_* */
+} oaxDecal_t;
+
+typedef struct {
+	int     shader;
+	int     numPoints;
+	int     lifeMs;
+	float   width[2];           /* at age 0, at lifeMs */
+	float   rgba[2][4];
+	float   texLength;          /* units per texture repeat, 0 = once over the trail */
+	int     flags;
+} oaxTrail_t;
 
 /*
  * Configstrings from CS_MAX (736) up belong to oax gamecode; the engine
@@ -81,6 +164,8 @@ typedef struct {
 #define CS_OAX_GUISTATE     865   /* 865-928: per-GUI state */
 #define CS_OAX_SCRIPT       929   /* 929-944: script-driven state */
 #define CS_OAX_ULIGHTS      945   /* 945-1008: controlled realtime lights */
+#define CS_OAX_FXDECLS      1009  /* particle decl names of func_oax_emitter entities, space separated (index = s.generic1) */
+#define CS_OAX_TRAILS       1010  /* "entnum shader width life r g b a;" for each entity that asks for a trail */
 
 /*
  * Script VM call records (layout shared with the engine's oax_script.h;

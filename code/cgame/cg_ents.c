@@ -1061,6 +1061,9 @@ static void CG_AddCEntity( centity_t *cent ) {
 	case ET_TEAM:
 		CG_TeamBase( cent );
 		break;
+	case ET_OAX_EMITTER:
+		CG_OAXEmitter( cent );
+		break;
 	case ET_OAX_LIGHT:
 		CG_OAXLight( cent );
 		break;

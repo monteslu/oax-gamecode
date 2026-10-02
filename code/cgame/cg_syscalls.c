@@ -509,3 +509,30 @@ void trap_OAX_R_UpdateLight( int index, const vec3_t origin, const vec3_t *axis,
 void trap_OAX_R_SetLightStyle( int style, float r, float g, float b ) {
 	syscall( CG_OAX_R_SETLIGHTSTYLE, style, PASSFLOAT( r ), PASSFLOAT( g ), PASSFLOAT( b ) );
 }
+
+/* physics (bg_oax_phys.h, cg_oax_phys.h) */
+#include "../game/bg_oax_phys_syscalls.h"
+int trap_Phys_R_ModelSkeleton( qhandle_t model, oaxSkelJoint_t *out, int max ) { return syscall( PHYS_R_MODEL_SKELETON, model, out, max ); }
+int trap_Phys_R_LerpSkeleton( qhandle_t model, int frame, int oldframe, float backlerp, float *mats, int max ) {
+	return syscall( PHYS_R_LERP_SKELETON, model, frame, oldframe, PASSFLOAT( backlerp ), mats, max );
+}
+void trap_Phys_R_AddSkeletalEntity( const refEntity_t *re, const float *mats, int numJoints ) {
+	syscall( PHYS_R_ADD_SKELETAL_ENTITY, re, mats, numJoints );
+}
+int trap_Phys_R_ModelFrames( qhandle_t model ) { return syscall( PHYS_R_MODEL_FRAMES, model ); }
+/* effects (phase 6) */
+int trap_OAX_R_RegisterFx( const char *name ) {
+	return syscall( CG_OAX_R_REGISTERFX, name );
+}
+int trap_OAX_R_AddFx( const oaxFx_t *fx ) {
+	return syscall( CG_OAX_R_ADDFX, fx );
+}
+int trap_OAX_R_AddDecal( const oaxDecal_t *decal ) {
+	return syscall( CG_OAX_R_ADDDECAL, decal );
+}
+void trap_OAX_R_AddTrail( const oaxTrail_t *trail, const float *points ) {
+	syscall( CG_OAX_R_ADDTRAIL, trail, points );
+}
+void trap_OAX_R_ClearDecals( void ) {
+	syscall( CG_OAX_R_CLEARDECALS );
+}

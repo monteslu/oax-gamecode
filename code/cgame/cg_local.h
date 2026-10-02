@@ -320,6 +320,7 @@ typedef struct localEntity_s {
 
 	refEntity_t		refEntity;		
 	trajectory_t		avelocity;		// leilei - angle velocity
+	int				physBody;		// oax: Box3D body of a physics fragment (cg_oax_phys.c), 0 = none
 } localEntity_t;
 
 //======================================================================
@@ -419,6 +420,7 @@ typedef struct {
 	int		isDead;
 	vec3_t			eyepos;		// leilei - eye positions loaded from anim cfg
 	int		onepiece;		// leilei - g_enableFS meshes
+	int		oaxSkel;		// oax: skeletal (IQM) player definition + 1 (cg_oax_skel.c), 0 = MD3
 } clientInfo_t;
 
 
@@ -2075,6 +2077,22 @@ void CG_OAXULightInit( void );
 void CG_OAXLight( centity_t *cent );
 void trap_OAX_R_SetLightStyle( int style, float r, float g, float b );
 void trap_OAX_R_SetViewFog( const float *rgb, float density, float start, float end );
+/* cg_oax_fx.c: particles, projected decals, trails (phase 6) */
+void CG_OAXFxInit( void );
+void CG_OAXFxFrame( void );
+void CG_OAXEmitter( centity_t *cent );
+int CG_OAXSpawnFx( int handle, const vec3_t origin, const vec3_t dir, float scale, const float *rgba );
+void CG_OAXImpactFx( int weapon, const vec3_t origin, const vec3_t dir, const float *color );
+qboolean CG_OAXDecal( qhandle_t shader, const vec3_t origin, const vec3_t dir, float orientation,
+	float r, float g, float b, float a, qboolean alphaFade, float radius );
+qboolean CG_OAXFxConsoleCommand( const char *cmd );
+int trap_OAX_R_RegisterFx( const char *name );
+int trap_OAX_R_AddFx( const oaxFx_t *fx );
+int trap_OAX_R_AddDecal( const oaxDecal_t *decal );
+void trap_OAX_R_AddTrail( const oaxTrail_t *trail, const float *points );
+void trap_OAX_R_ClearDecals( void );
 /* cg_oax_render.c: sky portals, light styles, view fog test */
 void CG_OAXRenderInit( void );
 void CG_OAXRenderFrame( void );
+/* cg_oax_phys.c, cg_oax_skel.c: cosmetic physics, skeletal players and ragdolls */
+#include "cg_oax_phys.h"

@@ -97,6 +97,7 @@ static void CG_MachineGunEjectBrass( centity_t *cent )
 	le->leFlags = LEF_TUMBLE;
 	le->leBounceSoundType = LEBS_BRASS;
 	le->leMarkType = LEMT_NONE;
+	CG_PhysLaunchFragment( le );	// oax: a Box3D body when cosmetic physics is on
 }
 
 
@@ -180,6 +181,7 @@ static void CG_ShotgunEjectBrass( centity_t *cent )
 		le->leFlags = LEF_TUMBLE;
 		le->leBounceSoundType = LEBS_SHELL; // LEILEI shell noises
 		le->leMarkType = LEMT_NONE;
+		CG_PhysLaunchFragment( le );	// oax: a Box3D body when cosmetic physics is on
 	}
 }
 
@@ -3818,6 +3820,9 @@ void CG_MissileHitWall( int weapon, int clientNum, vec3_t origin, vec3_t dir, im
 		}
 	}
 
+	// oax: particle impact effects (cg_oax_fx.c)
+	CG_OAXImpactFx( weapon, origin, dir, weapon == WP_RAILGUN ? cgs.clientinfo[clientNum].color1 : NULL );
+
 	//
 	// impact mark
 	//
@@ -3832,6 +3837,9 @@ void CG_MissileHitWall( int weapon, int clientNum, vec3_t origin, vec3_t dir, im
 	else {
 		CG_ImpactMark( mark, origin, dir, random()*360, 1,1,1,1, alphaFade, radius, qfalse );
 	}
+
+	// oax: explosions push the cosmetic physics bodies and chip the wall (cg_oax_phys.c)
+	CG_PhysExplosion( weapon, origin, dir, soundType != IMPACTSOUND_FLESH );
 }
 
 

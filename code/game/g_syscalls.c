@@ -883,3 +883,6 @@ void trap_OAX_ScriptShutdown( void ) {
 int trap_OAX_ScriptNumThreads( void ) {
 	return syscall( G_OAX_SCRIPT_NUM_THREADS );
 }
+
+/* physics (bg_oax_phys.h) */
+#include "bg_oax_phys_syscalls.h"

@@ -467,6 +467,8 @@ Server Command Table
 Not Worth Listing Elsewhere
 ================
 */
+void G_OAXPhysScene_f( void );
+
 struct {
 	char      *cmd;
 	qboolean  dedicated; //if it has to be entered from a dedicated server or RCON
@@ -496,6 +498,7 @@ struct {
 	//Kicks a player by number in the game logic rather than the server number
 	{ "clientkick_game", qfalse, ClientKick_f },
 	{ "endgamenow", qfalse, EndGame_f },
+	{ "physscene", qfalse, G_OAXPhysScene_f },	// oax: g_oax_phys.c, the physics determinism scene
 };
 
 /*

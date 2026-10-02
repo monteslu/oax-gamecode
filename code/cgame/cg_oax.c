@@ -39,6 +39,8 @@ void CG_OAXInit( void ) {
 	CG_OAXZoneInit();
 	CG_OAXULightInit();
 	CG_OAXRenderInit();
+	CG_PhysInit();			/* "physics": the cosmetic world, gibs, ragdolls */
+	CG_OAXFxInit();
 }
 
 /* CG_ConfigStringModified: oax configstrings (CS_OAX_*) */
@@ -53,4 +55,6 @@ void CG_OAXFrame( void ) {
 	BG_OAXDebugSetInt( "cg_mispredicts", cg_oaxMispredicts );
 	CG_OAXZoneFrame();
 	CG_OAXRenderFrame();
+	CG_PhysFrame();
+	CG_OAXFxFrame();
 }

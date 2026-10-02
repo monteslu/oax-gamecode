@@ -247,3 +247,36 @@ equ trap_OAX_ScriptObjectDone			-1018
 equ trap_OAX_ScriptKillThread			-1019
 equ trap_OAX_ScriptShutdown				-1020
 equ trap_OAX_ScriptNumThreads			-1021
+
+; physics (bg_oax_phys.h): block 1200-1299, the same numbers in game and cgame
+equ trap_Phys_WorldCreate                 -1201
+equ trap_Phys_WorldDestroy                -1202
+equ trap_Phys_WorldStep                   -1203
+equ trap_Phys_WorldAddBSP                 -1204
+equ trap_Phys_WorldAddHeightField         -1205
+equ trap_Phys_WorldSetGravity             -1206
+equ trap_Phys_WorldStats                  -1207
+equ trap_Phys_WorldHash                   -1208
+equ trap_Phys_WorldExplode                -1209
+equ trap_Phys_WorldContactEvents          -1210
+equ trap_Phys_BodyCreate                  -1211
+equ trap_Phys_BodyDestroy                 -1212
+equ trap_Phys_BodyAddShape                -1213
+equ trap_Phys_BodySetTransform            -1214
+equ trap_Phys_BodySetVelocity             -1215
+equ trap_Phys_BodyApply                   -1216
+equ trap_Phys_BodySetTarget               -1217
+equ trap_Phys_BodySetParam                -1218
+equ trap_Phys_BodyGetState                -1219
+equ trap_Phys_BodyGetStates               -1220
+equ trap_Phys_BodyFromBSPModel            -1221
+equ trap_Phys_BodyGetMass                 -1222
+equ trap_Phys_RagdollCreate               -1223
+equ trap_Phys_JointCreate                 -1231
+equ trap_Phys_JointDestroy                -1232
+equ trap_Phys_JointSetParam               -1233
+equ trap_Phys_JointGetParam               -1234
+equ trap_Phys_Raycast                     -1241
+equ trap_Phys_RaycastBatch                -1242
+equ trap_Phys_Shapecast                   -1243
+equ trap_Phys_Overlap                     -1244

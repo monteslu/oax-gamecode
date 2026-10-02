@@ -13,6 +13,8 @@ engine.
 #include "g_oax_script.h"
 
 void G_OAXBindRunFrame( void );
+void G_OAXPhysFrame( void );		/* g_oax_phys.c */
+void G_OAXPhysShutdown( void );
 #include "g_oax_sim.h"
 
 static char oaxManifest[1024];
@@ -49,6 +51,7 @@ void G_OAXRunFrame( int levelTime ) {
 	G_OAXZoneFrame();
 	G_OAXGuiRunFrame();
 	G_OAXULightFrame();
+	G_OAXPhysFrame();			/* "physics": the level world, physscene */
 }
 
 /* after every entity ran this frame (end of G_RunFrame) */
@@ -60,4 +63,5 @@ void G_OAXRunFrameEnd( int levelTime ) {
 void G_OAXShutdown( int restart ) {
 	G_OAXScriptShutdown( restart );
 	G_OAXGuiShutdown();
+	G_OAXPhysShutdown();
 }

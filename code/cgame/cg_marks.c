@@ -148,6 +148,11 @@ void CG_ImpactMark( qhandle_t markShader, const vec3_t origin, const vec3_t dir,
 		CG_Error( "CG_ImpactMark called with <= 0 radius" );
 	}
 
+	// oax: lasting marks become projected decals (cg_oax_fx.c)
+	if ( !temporary && CG_OAXDecal( markShader, origin, dir, orientation, red, green, blue, alpha, alphaFade, radius ) ) {
+		return;
+	}
+
 	//if ( markTotal >= MAX_MARK_POLYS ) {
 	//	return;
 	//}

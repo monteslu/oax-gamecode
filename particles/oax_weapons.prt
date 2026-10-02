@@ -1,0 +1,162 @@
+// oax_weapons.prt: the particle systems the oax cgame spawns for weapon
+// impacts (code/cgame/cg_oax_fx.c). DOOM-3 particle decl syntax; materials
+// are Q3 shaders (scripts/oax_fx.shader). Times are seconds, sizes and
+// distances units, the decl's z axis is the surface normal.
+
+particle oax/impact_sparks {
+	{
+		count				20
+		material			oaxfx/spark
+		time				0.4
+		cycles				1
+		bunching			0
+		distribution		sphere 2 2 2
+		direction			cone 75
+		orientation			aimed 0 0.04
+		speed				"300" to "80"
+		size				"1.2" to "0.5"
+		gravity				world 400
+		fadeIn				0
+		fadeOut				0.5
+		color				1 0.85 0.45 1
+		fadeColor			0 0 0 0
+		softDistance		-1
+	}
+}
+
+particle oax/bullet_sparks {
+	{
+		count				8
+		material			oaxfx/spark
+		time				0.25
+		cycles				1
+		bunching			0
+		distribution		sphere 1 1 1
+		direction			cone 60
+		orientation			aimed 0 0.03
+		speed				"260" to "60"
+		size				"0.8" to "0.4"
+		gravity				world 400
+		fadeIn				0
+		fadeOut				0.5
+		color				1 0.9 0.6 1
+		fadeColor			0 0 0 0
+		softDistance		-1
+	}
+}
+
+particle oax/impact_smoke {
+	{
+		count				6
+		material			oaxfx/smoke
+		time				1.4
+		cycles				1
+		bunching			0.3
+		distribution		sphere 3 3 3
+		direction			cone 40
+		speed				"30" to "4"
+		size				"4" to "16"
+		rotation			"20" to "40"
+		gravity				world -14
+		fadeIn				0.1
+		fadeOut				0.7
+		color				0.55 0.55 0.55 0.6
+		fadeColor			0.55 0.55 0.55 0
+	}
+}
+
+particle oax/explosion {
+	{
+		count				14
+		material			oaxfx/glow
+		time				0.55
+		cycles				1
+		bunching			0.1
+		distribution		sphere 8 8 8
+		direction			cone 180
+		speed				"120" to "10"
+		size				"10" to "26"
+		rotation			"30" to "60"
+		gravity				0
+		fadeIn				0
+		fadeOut				0.8
+		color				1 0.6 0.25 1
+		fadeColor			0 0 0 0
+	}
+	{
+		count				32
+		material			oaxfx/spark
+		time				0.7
+		cycles				1
+		bunching			0
+		distribution		sphere 4 4 4
+		direction			cone 110
+		orientation			aimed 0 0.05
+		speed				"420" to "120"
+		size				"1.5" to "0.6"
+		gravity				world 450
+		fadeIn				0
+		fadeOut				0.6
+		color				1 0.75 0.35 1
+		fadeColor			0 0 0 0
+		softDistance		-1
+	}
+}
+
+particle oax/plasma_impact {
+	{
+		count				12
+		material			oaxfx/glow
+		time				0.3
+		cycles				1
+		bunching			0
+		distribution		sphere 3 3 3
+		direction			cone 120
+		speed				"90" to "10"
+		size				"3" to "8"
+		gravity				0
+		fadeIn				0
+		fadeOut				0.7
+		color				0.45 0.6 1 1
+		fadeColor			0 0 0 0
+	}
+}
+
+particle oax/rail_impact {
+	{
+		count				16
+		material			oaxfx/spark
+		time				0.45
+		cycles				1
+		bunching			0
+		distribution		sphere 2 2 2
+		direction			cone 80
+		orientation			aimed 0 0.04
+		speed				"280" to "60"
+		size				"1.2" to "0.5"
+		gravity				world 300
+		entityColor			1
+		fadeIn				0
+		fadeOut				0.5
+		color				1 1 1 1
+		fadeColor			0 0 0 0
+		softDistance		-1
+	}
+	{
+		count				6
+		material			oaxfx/glow
+		time				0.35
+		cycles				1
+		bunching			0
+		distribution		sphere 2 2 2
+		direction			cone 90
+		speed				"40" to "5"
+		size				"4" to "10"
+		gravity				0
+		entityColor			1
+		fadeIn				0
+		fadeOut				0.8
+		color				1 1 1 1
+		fadeColor			0 0 0 0
+	}
+}

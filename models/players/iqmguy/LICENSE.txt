@@ -1,0 +1,17 @@
+iqmguy: a skeletal (IQM) player model for the oax physics ragdolls.
+
+body.iqm and guytex.png are copied unmodified from raylib
+(https://github.com/raysan5/raylib, commit dbc56a87da87d973a9c5baa4e7438a9d20121d28,
+examples/models/resources/models/iqm/guy.iqm and guytex.png), where they are
+listed as "guy.iqm, guyanim.iqm, guytex.png, guy.blend" by @culacant
+(https://github.com/culacant), license CC0 1.0 (public domain dedication,
+https://creativecommons.org/publicdomain/zero/1.0/), in
+examples/models/resources/LICENSE.md.
+
+sha256:
+  96b0e6e21b26470cb3813abd414c308115396d7aa0e8b4bcbfb49ffc59e62203  body.iqm
+  1759be8fb6924145e732e14acaab488d8754e39ade8633bfaeeb98b2df301091  guytex.png
+
+icon_default.tga is a crop of guytex.png (so CC0 as well). The other files
+in this directory (skeleton.cfg, animation.cfg, body_default.skin) are ours,
+under the gamecode's GPL.

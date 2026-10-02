@@ -811,6 +811,7 @@ typedef enum {
 	ET_GRAPPLE,				// grapple hooked on wall
 	ET_TEAM,
 	ET_OAX_LIGHT,			// oax unified lighting: a light the game controls
+	ET_OAX_EMITTER,			// oax particle emitter (func_oax_emitter, g_oax_fx.c)
 
 	ET_EVENTS				// any of the EV_* events can be added freestanding
 							// by setting eType to ET_EVENTS + eventNum

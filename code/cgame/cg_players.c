@@ -662,6 +662,17 @@ static qboolean CG_RegisterClientModelname(clientInfo_t *ci, const char *modelNa
 		headName = headModelName;
 	}
 
+	// oax: a skeletal (IQM) player: one model, ragdoll on death (cg_oax_skel.c)
+	if (CG_SkelRegisterClient(ci, modelName)) {
+		ci->onepiece = 0;
+		if (!CG_ParseAnimationFile(va("models/players/%s/animation.cfg", modelName), ci)) {
+			Com_Printf("Failed to load animation file models/players/%s/animation.cfg\n", modelName);
+			return qfalse;
+		}
+		ci->modelIcon = trap_R_RegisterShaderNoMip(va("models/players/%s/icon_%s.tga", modelName, skinName));
+		return qtrue;
+	}
+
 	// leilei - onepiece model loading for certain maps or WIP animation debug
 	ci->onepiece = 0;
 	if (cg_enableFS.integer) {
@@ -945,6 +956,7 @@ static void CG_CopyClientInfoModel(clientInfo_t *from, clientInfo_t *to) {
 	to->gender = from->gender;
 
 	to->legsModel = from->legsModel;
+	to->oaxSkel = from->oaxSkel;	// oax: skeletal player (cg_oax_skel.c)
 	to->legsSkin = from->legsSkin;
 	to->torsoModel = from->torsoModel;
 	to->torsoSkin = from->torsoSkin;
@@ -2703,6 +2715,13 @@ void CG_Player(centity_t *cent) {
 	CG_PlayerAnimation(cent, &legs.oldframe, &legs.frame, &legs.backlerp,
 			&torso.oldframe, &torso.frame, &torso.backlerp);
 
+	// oax: a dead skeletal player is its ragdoll (cg_oax_skel.c), which moves
+	// away from the entity: no blob shadow or sprites at the entity
+	if (ci->oaxSkel && (cent->currentState.eFlags & EF_DEAD)) {
+		CG_SkelPlayer(cent, ci, &legs, &torso, renderfx, 0);
+		return;
+	}
+
 	// add the talk baloon or disconnect icon
 	CG_PlayerSprites(cent);
 
@@ -2718,6 +2737,15 @@ void CG_Player(centity_t *cent) {
 	renderfx |= RF_LIGHTING_ORIGIN; // use the same origin for all
 	if (cgs.gametype == GT_HARVESTER) {
 		CG_PlayerTokens(cent, renderfx);
+	}
+	// oax: a skeletal (IQM) player is one model, posed here and a ragdoll
+	// when dead (cg_oax_skel.c); the weapon goes in its hand
+	if (ci->oaxSkel) {
+		if (CG_SkelPlayer(cent, ci, &legs, &torso, renderfx, shadowPlane)) {
+			CG_AddPlayerWeapon(&torso, NULL, cent, ci->team);
+			CG_PlayerPowerups(cent, &torso);
+		}
+		return;
 	}
 	//
 	// add the legs

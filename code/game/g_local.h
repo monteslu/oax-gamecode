@@ -1440,6 +1440,10 @@ void G_OAXShutdown( int restart );
 void trap_OAX_DebugSet( const char *name, const char *value );
 int trap_OAX_BSPXRead( const char *lump, void *buf, int size );
 
+// g_oax_fx.c: func_oax_emitter, trails on any entity
+void G_OAXFxReset( void );
+void G_OAXFxSpawnEntity( gentity_t *ent );
+
 // g_oax_ulight.c
 extern int g_oaxSpawnOrdinal;
 void G_OAXULightReset( void );

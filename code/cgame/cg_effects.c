@@ -647,6 +647,7 @@ void CG_LaunchGib( vec3_t origin, vec3_t velocity, qhandle_t hModel ) {
 
 	le->leBounceSoundType = LEBS_BLOOD;
 	le->leMarkType = LEMT_BLOOD;
+	CG_PhysLaunchFragment( le );	// oax: a Box3D body when cosmetic physics is on
 
 }
 
