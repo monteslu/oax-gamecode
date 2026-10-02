@@ -236,6 +236,10 @@ equ trap_OAX_GuiTrace					-1046
 equ trap_OAX_GuiActivate				-1047
 equ trap_OAX_GuiNamedEvent				-1048
 equ trap_OAX_GuiStateInfo				-1049
+equ trap_OAX_NavStatus					-1091
+equ trap_OAX_NavFindPath				-1092
+equ trap_OAX_NavNearest					-1093
+equ trap_OAX_NavRandomPoint				-1094
 equ trap_OAX_ScriptInit					-1011
 equ trap_OAX_ScriptRegisterEvent		-1012
 equ trap_OAX_ScriptCompileFile			-1013

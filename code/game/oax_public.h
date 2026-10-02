@@ -40,6 +40,11 @@ shipped; each feature owns a block.
 #define G_OAX_GUI_STATE_INFO    1048  /* ( int handle, char *buf, int size ) -> length */
 #define G_OAX_PORTAL_BASE   1060  /* 1060-1069 area portals, world queries */
 #define G_OAX_ULIGHT_BASE   1070  /* 1070-1079 unified lighting */
+#define G_OAX_NAV_BASE      1090  /* 1090-1099 navigation: navmesh for bots where AAS is absent */
+#define G_OAX_NAV_STATUS        1090  /* ( void ) -> navmesh polygon count, 0 if none */
+#define G_OAX_NAV_FINDPATH      1091  /* ( start, goal, float *points, int maxPoints, int *flags ) -> points; flags & 1 partial */
+#define G_OAX_NAV_NEAREST       1092  /* ( point, halfExtents, vec3_t out ) -> 1 found */
+#define G_OAX_NAV_RANDOMPOINT   1093  /* ( int seed, vec3_t out ) -> 1 found */
 
 /* cgame imports */
 #define CG_OAX_DEBUG_SET    1000

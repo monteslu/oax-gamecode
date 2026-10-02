@@ -837,6 +837,23 @@ int trap_OAX_GuiStateInfo( int handle, char *buf, int size ) {
 	return syscall( G_OAX_GUI_STATE_INFO, handle, buf, size );
 }
 
+/* navigation (g_oax_nav.h) */
+int trap_OAX_NavStatus( void ) {
+	return syscall( G_OAX_NAV_STATUS );
+}
+
+int trap_OAX_NavFindPath( const vec3_t start, const vec3_t goal, float *points, int maxPoints, int *flags ) {
+	return syscall( G_OAX_NAV_FINDPATH, start, goal, points, maxPoints, flags );
+}
+
+int trap_OAX_NavNearest( const vec3_t point, const vec3_t halfExtents, vec3_t out ) {
+	return syscall( G_OAX_NAV_NEAREST, point, halfExtents, out );
+}
+
+int trap_OAX_NavRandomPoint( int seed, vec3_t out ) {
+	return syscall( G_OAX_NAV_RANDOMPOINT, seed, out );
+}
+
 /* map scripting (g_oax_script.h) */
 #include "g_oax_script.h"
 

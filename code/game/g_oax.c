@@ -15,6 +15,9 @@ engine.
 void G_OAXBindRunFrame( void );
 void G_OAXPhysFrame( void );		/* g_oax_phys.c */
 void G_OAXPhysShutdown( void );
+void G_OAXCtfStatsInit( void );
+void G_OAXCtfStatsFrame( void );
+void G_OAXNavBotInit( void );
 #include "g_oax_sim.h"
 
 static char oaxManifest[1024];
@@ -37,6 +40,8 @@ void G_OAXInit( int levelTime, int randomSeed, int restart ) {
 		}
 	}
 	G_OAXStatsInit();
+	G_OAXCtfStatsInit();
+	G_OAXNavBotInit();		/* "nav": navmesh bots (g_oax_navbot.c) */
 	BG_OAXDebugSet( "g_oax", va( "%i", OAX_VERSION ) );
 	BG_OAXDebugSetInt( "g_manifest_len", len );
 	G_OAXGuiInit();
@@ -46,6 +51,7 @@ void G_OAXInit( int levelTime, int randomSeed, int restart ) {
 
 void G_OAXRunFrame( int levelTime ) {
 	G_OAXStatsFrame();
+	G_OAXCtfStatsFrame();
 	G_OAXMoverRunFrame();
 	G_OAXPortalRunFrame();		/* "portal": distance closing */
 	G_OAXZoneFrame();

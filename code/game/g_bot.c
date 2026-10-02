@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // g_bot.c
 
 #include "g_local.h"
+#include "g_oax_nav.h"
 
 
 static int		g_numBots;
@@ -576,6 +577,11 @@ qboolean G_BotConnect( int clientNum, qboolean restart ) {
 	Q_strncpyz( settings.characterfile, Info_ValueForKey( userinfo, "characterfile" ), sizeof(settings.characterfile) );
 	settings.skill = atof( Info_ValueForKey( userinfo, "skill" ) );
 
+	/* oax: without AAS, a bot that paths on the navmesh (g_oax_navbot.c) */
+	if ( !trap_AAS_Initialized() && G_OAXNavBotConnect( clientNum, settings.skill ) ) {
+		return qtrue;
+	}
+
 	if (!trap_AAS_Initialized() || !BotAISetupClient( clientNum, &settings, restart )) {
 		trap_DropClient( clientNum, "BotAISetupClient failed" );
 		return qfalse;
@@ -768,7 +774,7 @@ void Svcmd_AddBot_f( void ) {
 	char			team[MAX_TOKEN_CHARS];
 
 	// are bots enabled?
-	if ( !trap_Cvar_VariableIntegerValue( "bot_enable" ) || !trap_AAS_Initialized() ) {
+	if ( !trap_Cvar_VariableIntegerValue( "bot_enable" ) || ( !trap_AAS_Initialized() && !G_OAXNavBotsActive() ) ) {
 		return;
 	}
 

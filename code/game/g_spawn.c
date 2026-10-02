@@ -185,6 +185,7 @@ void SP_misc_model(gentity_t *ent);
 void SP_misc_portal_camera(gentity_t *ent);
 void SP_misc_oax_skyportal(gentity_t *ent);
 void SP_func_oax_emitter( gentity_t *ent );
+void SP_misc_oax_terrain(gentity_t *ent);
 void SP_misc_portal_surface(gentity_t *ent);
 
 void SP_shooter_rocket( gentity_t *ent );
@@ -285,6 +286,7 @@ spawn_t	spawns[] = {
 	{"misc_portal_camera", SP_misc_portal_camera},
 	{"misc_oax_skyportal", SP_misc_oax_skyportal},
 	{"func_oax_emitter", SP_func_oax_emitter},	/* oax particle emitter (g_oax_fx.c) */
+	{"misc_oax_terrain", SP_misc_oax_terrain},	/* baked into OAX_TERRAIN; nothing at run time */
 
 	{"shooter_rocket", SP_shooter_rocket},
 	{"shooter_grenade", SP_shooter_grenade},

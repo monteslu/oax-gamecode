@@ -9,6 +9,9 @@ OAX_GSRC = \
   game/g_oax_gui \
   game/g_oax_guiscript \
   game/g_oax_stats \
+  game/g_oax_ctfstats \
+  game/g_oax_terrain \
+  game/g_oax_navbot \
   game/bg_oax_traj \
   game/bg_oax_spline \
   game/g_oax_mover \

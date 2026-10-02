@@ -11,6 +11,7 @@ reachable, nobody falling out of the world.
 #include "g_local.h"
 #include "../botlib/botlib.h"
 #include "../botlib/be_aas.h"
+#include "g_oax_nav.h"
 
 int BotPointAreaNum( vec3_t origin );
 
@@ -105,6 +106,65 @@ static void G_OAXRoutes( void ) {
 	BG_OAXDebugSet( "g_items_unroutable", missing );
 }
 
+/*
+=================
+G_OAXNavRoutes
+
+The same as G_OAXRoutes for maps without AAS whose bots path on the
+engine's navmesh (g_oax_navbot.c): an item is routable when a full path
+(not a partial one) leads to it from at least one spawn point.
+=================
+*/
+static void G_OAXNavRoutes( void ) {
+	vec3_t spawnOrigin[MAX_GENTITIES / 4], ext, near;
+	float pts[64 * 3];
+	int numSpawns = 0, i, j, total = 0, routable = 0, len = 0;
+	char missing[1024];
+	gentity_t *ent;
+
+	VectorSet( ext, 32, 32, 96 );
+	for ( i = MAX_CLIENTS; i < level.num_entities && numSpawns < MAX_GENTITIES / 4; i++ ) {
+		ent = &g_entities[i];
+		if ( !ent->classname || !G_OAXIsSpawn( ent ) ) {
+			continue;
+		}
+		if ( trap_OAX_NavNearest( ent->s.origin, ext, near ) ) {
+			VectorCopy( ent->s.origin, spawnOrigin[numSpawns] );
+			numSpawns++;
+		}
+	}
+	missing[0] = '\0';
+	for ( i = MAX_CLIENTS; i < level.num_entities; i++ ) {
+		int ok = 0, onMesh;
+		vec3_t o;
+
+		ent = &g_entities[i];
+		if ( !ent->inuse || !ent->item || ( ent->flags & FL_DROPPED_ITEM ) ) {
+			continue;
+		}
+		total++;
+		VectorCopy( ent->s.origin, o );
+		onMesh = trap_OAX_NavNearest( o, ext, near );
+		for ( j = 0; j < numSpawns && onMesh && !ok; j++ ) {
+			int flags = 0;
+			ok = trap_OAX_NavFindPath( spawnOrigin[j], o, pts, 64, &flags ) > 0 && !( flags & OAX_NAV_PATH_PARTIAL );
+		}
+		if ( ok ) {
+			routable++;
+		} else if ( len < (int)sizeof( missing ) - 64 ) {
+			Com_sprintf( missing + len, sizeof( missing ) - len, "%s%s@%i,%i,%i%s", len ? ";" : "",
+				ent->classname, (int)o[0], (int)o[1], (int)o[2], !onMesh ? "(off the navmesh)" : "" );
+			len = strlen( missing );
+		}
+	}
+	BG_OAXDebugSetInt( "g_route_spawns", numSpawns );
+	BG_OAXDebugSetInt( "g_items_routable", routable );
+	BG_OAXDebugSetInt( "g_items_routable_any_travel", routable );
+	BG_OAXDebugSetInt( "g_items_routed_total", total );
+	BG_OAXDebugSet( "g_items_unroutable", missing );
+	BG_OAXDebugSet( "g_route_source", "navmesh" );
+}
+
 void G_OAXStatsFrame( void ) {
 	int i, total = 0, reached = 0, flags = 0, flagsReached = 0, len = 0;
 	char missing[1024];
@@ -125,6 +185,9 @@ void G_OAXStatsFrame( void ) {
 	if ( !oaxRoutesDone && level.time > 3000 && trap_AAS_Initialized() ) {
 		oaxRoutesDone = 1;
 		G_OAXRoutes();
+	} else if ( !oaxRoutesDone && level.time > 3000 && G_OAXNavBotsActive() ) {
+		oaxRoutesDone = 1;
+		G_OAXNavRoutes();
 	}
 	if ( level.framenum % 10 ) {
 		return;

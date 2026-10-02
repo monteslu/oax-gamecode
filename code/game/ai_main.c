@@ -32,6 +32,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 #include "g_local.h"
+#include "g_oax_nav.h"
 #include "../qcommon/q_shared.h"
 #include "../botlib/botlib.h"		//bot lib interface
 #include "../botlib/be_aas.h"
@@ -1442,6 +1443,12 @@ int BotAIStartFrame(int time) {
 	static int lastbotthink_time;
 
 	G_CheckBotSpawn();
+
+	/* oax: navmesh bots on maps without AAS (g_oax_navbot.c) */
+	if ( G_OAXNavBotsActive() ) {
+		G_OAXNavBotFrame( time );
+		return qtrue;
+	}
 
 	trap_Cvar_Update(&bot_rocketjump);
 	trap_Cvar_Update(&bot_grapple);
