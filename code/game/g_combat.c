@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "g_local.h"
 #include "challenges.h"
+#include "g_oax_vehicle.h"
 
 /*
 ============
@@ -1155,6 +1156,11 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 	}
 	if ( dflags & DAMAGE_NO_KNOCKBACK ) {
 		knockback = 0;
+	}
+
+	// oax vehicles: a hit or an explosion pushes the vehicle (g_oax_vehicle.c)
+	if ( knockback && targ->s.eType == ET_OAX_VEHICLE ) {
+		G_OAXVehicleImpulse( targ, dir, point, knockback );
 	}
 
 	// figure momentum add, even if the damage won't be taken

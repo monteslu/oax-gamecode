@@ -705,6 +705,12 @@ void CG_AdjustPositionForMover( const vec3_t in, int moverNum, int fromTime, int
 		return;
 	}
 
+	// oax vehicles: a player on the deck rides along
+	if ( CG_OAXVehicleRider( moverNum, fromTime, toTime, in, out ) ) {
+		VectorCopy( angles_in, angles_out );
+		return;
+	}
+
 	cent = &cg_entities[ moverNum ];
 	if ( cent->currentState.eType != ET_MOVER ) {
 		VectorCopy( in, out );
@@ -1066,6 +1072,9 @@ static void CG_AddCEntity( centity_t *cent ) {
 		break;
 	case ET_OAX_LIGHT:
 		CG_OAXLight( cent );
+		break;
+	case ET_OAX_VEHICLE:
+		CG_OAXVehicle( cent );
 		break;
 	}
 }

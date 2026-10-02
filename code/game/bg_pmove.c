@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/q_shared.h"
 #include "bg_public.h"
 #include "bg_local.h"
+#include "bg_oax_vehicle.h"
 
 pmove_t		*pm;
 pml_t		pml;
@@ -2103,6 +2104,18 @@ void PmoveSingle (pmove_t *pmove)
 	if ( pm->ps->pm_type == PM_NOCLIP ) {
 		PM_NoclipMove ();
 		PM_DropTimers ();
+		return;
+	}
+
+	// oax vehicles: an occupant rides its seat (the server places it); a
+	// gunner's weapon works
+	if ( pm->ps->pm_flags & PMF_OAX_VEHICLE ) {
+		PM_CheckDuck();
+		PM_DropTimers();
+		if ( ( pm->ps->stats[STAT_OAX_VEHICLE] - 1 ) / 1024 == OAX_VEH_SEAT_GUNNER ) {
+			PM_Weapon();
+			PM_TorsoAnimation();
+		}
 		return;
 	}
 

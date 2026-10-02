@@ -28,7 +28,10 @@ OAX_GSRC = \
   game/g_oax_lightstyle \
   game/bg_oax_phys \
   game/g_oax_phys \
-  game/g_oax_fx
+  game/g_oax_fx \
+  game/bg_oax_vehicle \
+  game/g_oax_vehicle \
+  game/g_oax_vehbot
 
 OAX_CGSRC = \
   cgame/bg_oax \
@@ -40,6 +43,8 @@ OAX_CGSRC = \
   cgame/cg_oax_zone \
   cgame/cg_oax_ulight \
   cgame/cg_oax_render \
+  cgame/bg_oax_vehicle \
+  cgame/cg_oax_vehicle \
   cgame/bg_oax_phys \
   cgame/cg_oax_phys \
   cgame/cg_oax_skel \

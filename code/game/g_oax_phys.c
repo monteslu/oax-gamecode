@@ -22,6 +22,8 @@ change them.
 #include "g_local.h"
 #include "bg_oax_phys.h"
 
+int		G_OAXVehiclesActive( void );	/* g_oax_vehicle.c */
+
 #define SCENE_TICKS_PER_FRAME	25
 #define SCENE_MAX_TICKS			1200
 #define SCENE_HASHES_PER_VALUE	100
@@ -542,10 +544,12 @@ void G_OAXPhysScene_f( void ) {
 
 void G_OAXPhysFrame( void ) {
 	Scene_Frame();
-	if ( g_physWorld ) {
+	/* with vehicles in it the vehicle clock steps it, tick by tick
+	   (g_oax_vehicle.c G_VehAdvance) */
+	if ( g_physWorld && !G_OAXVehiclesActive() ) {
 		trap_Phys_WorldStep( g_physWorld, level.time - g_physLastTime );
-		g_physLastTime = level.time;
 	}
+	g_physLastTime = level.time;
 }
 
 void G_OAXPhysShutdown( void ) {

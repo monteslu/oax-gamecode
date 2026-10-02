@@ -16,6 +16,7 @@ Published as debug values once a second:
 ===========================================================================
 */
 #include "g_local.h"
+#include "bg_oax_vehicle.h"
 
 static int ctfHeld[2];		/* client holding the red / blue flag + 1, 0 none */
 static int ctfTaken[2];
@@ -62,7 +63,9 @@ void G_OAXCtfStatsFrame( void ) {
 		botFrames++;
 		VectorCopy( ent->r.currentOrigin, feet );
 		feet[2] += ent->r.mins[2] + 1.0f;
-		if ( trap_PointContents( feet, ent->s.number ) & CONTENTS_SOLID ) {
+		/* a vehicle rider has no feet on anything (the vehicle code counts
+		   vehicles in solid) */
+		if ( !( ent->client->ps.pm_flags & PMF_OAX_VEHICLE ) && ( trap_PointContents( feet, ent->s.number ) & CONTENTS_SOLID ) ) {
 			botsInSolid++;
 		}
 		OAXCtfHashInt( i );

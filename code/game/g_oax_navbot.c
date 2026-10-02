@@ -25,6 +25,7 @@ clock, so a match plays the same on every build.
 #include "g_local.h"
 #include "oax_public.h"
 #include "g_oax_nav.h"
+#include "g_oax_vehicle.h"
 
 #define NB_MAX_POINTS	32
 #define NB_REPATH_MS	1500
@@ -312,7 +313,8 @@ static int NB_FindEnemy( gentity_t *ent ) {
 			continue;
 		}
 		trap_Trace( &tr, eye, NULL, NULL, oe, ent->s.number, MASK_SHOT );
-		if ( tr.fraction >= 1.0f || tr.entityNum == i ) {
+		/* a driver sits inside its vehicle: the vehicle in the way counts as seeing it */
+		if ( tr.fraction >= 1.0f || tr.entityNum == i || ( tr.entityNum < ENTITYNUM_MAX_NORMAL && tr.entityNum == G_OAXVehicleOfClient( i, NULL ) ) ) {
 			best = i;
 			bestDist = d;
 		}
@@ -612,6 +614,8 @@ void G_OAXNavBotFrame( int time ) {
 		while ( trap_BotGetServerCommand( i, cmdBuf, sizeof( cmdBuf ) ) ) {
 		}
 		NB_Think( i, time );
+		/* oax vehicles: boarding and driving toward the same goal (g_oax_vehbot.c) */
+		G_OAXVehBotCommand( i, &navBots[i].cmd, navBots[i].goal, navBots[i].goalKind != NBG_NONE, time );
 		trap_BotUserCommand( i, &navBots[i].cmd );
 		n++;
 	}

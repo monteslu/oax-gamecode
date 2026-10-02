@@ -986,8 +986,14 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 			&& (cg_thirdPerson.integer || (cg.snap->ps.stats[STAT_HEALTH] <= 0));
 	}
 
+	// oax vehicles: a driver sees the vehicle from behind
+	if ( CG_OAXVehicleDriving() ) {
+		cg.renderingThirdPerson = qtrue;
+	}
+
 	// build cg.refdef
 	inwater = CG_CalcViewValues();
+	CG_OAXVehicleView();
 
 	// first person blend blobs, done after AnglesToAxis
 	if ( !cg.renderingThirdPerson ) {

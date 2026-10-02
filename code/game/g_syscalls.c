@@ -854,6 +854,11 @@ int trap_OAX_NavRandomPoint( int seed, vec3_t out ) {
 	return syscall( G_OAX_NAV_RANDOMPOINT, seed, out );
 }
 
+/* oriented entity boxes (g_oax_vehicle.c) */
+void trap_OAX_EntSetOBB( int entnum, const float *obb ) {
+	syscall( G_OAX_ENT_SET_OBB, entnum, obb );
+}
+
 /* map scripting (g_oax_script.h) */
 #include "g_oax_script.h"
 
@@ -903,3 +908,4 @@ int trap_OAX_ScriptNumThreads( void ) {
 
 /* physics (bg_oax_phys.h) */
 #include "bg_oax_phys_syscalls.h"
+#include "bg_oax_vehicle_syscalls.h"

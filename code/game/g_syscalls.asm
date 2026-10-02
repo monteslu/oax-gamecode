@@ -240,6 +240,7 @@ equ trap_OAX_NavStatus					-1091
 equ trap_OAX_NavFindPath				-1092
 equ trap_OAX_NavNearest					-1093
 equ trap_OAX_NavRandomPoint				-1094
+equ trap_OAX_EntSetOBB					-1101
 equ trap_OAX_ScriptInit					-1011
 equ trap_OAX_ScriptRegisterEvent		-1012
 equ trap_OAX_ScriptCompileFile			-1013
@@ -284,3 +285,9 @@ equ trap_Phys_Raycast                     -1241
 equ trap_Phys_RaycastBatch                -1242
 equ trap_Phys_Shapecast                   -1243
 equ trap_Phys_Overlap                     -1244
+equ trap_Phys_VehicleCreate               -1261
+equ trap_Phys_VehicleDestroy              -1262
+equ trap_Phys_VehicleSetInput             -1263
+equ trap_Phys_VehicleGetState             -1264
+equ trap_Phys_WorldAddTerrain             -1265
+equ trap_Phys_VehicleSetState             -1266

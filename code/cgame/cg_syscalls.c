@@ -512,6 +512,12 @@ void trap_OAX_R_SetLightStyle( int style, float r, float g, float b ) {
 
 /* physics (bg_oax_phys.h, cg_oax_phys.h) */
 #include "../game/bg_oax_phys_syscalls.h"
+#include "../game/bg_oax_vehicle_syscalls.h"
+
+/* oriented entity boxes (cg_oax_vehicle.c) */
+clipHandle_t trap_OAX_CM_TempOBBModel( const float *obb, int contents ) {
+	return syscall( CG_OAX_CM_TEMP_OBB, obb, contents );
+}
 int trap_Phys_R_ModelSkeleton( qhandle_t model, oaxSkelJoint_t *out, int max ) { return syscall( PHYS_R_MODEL_SKELETON, model, out, max ); }
 int trap_Phys_R_LerpSkeleton( qhandle_t model, int frame, int oldframe, float backlerp, float *mats, int max ) {
 	return syscall( PHYS_R_LERP_SKELETON, model, frame, oldframe, PASSFLOAT( backlerp ), mats, max );

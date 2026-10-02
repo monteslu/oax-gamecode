@@ -45,6 +45,9 @@ shipped; each feature owns a block.
 #define G_OAX_NAV_FINDPATH      1091  /* ( start, goal, float *points, int maxPoints, int *flags ) -> points; flags & 1 partial */
 #define G_OAX_NAV_NEAREST       1092  /* ( point, halfExtents, vec3_t out ) -> 1 found */
 #define G_OAX_NAV_RANDOMPOINT   1093  /* ( int seed, vec3_t out ) -> 1 found */
+#define G_OAX_ENT_BASE      1100  /* 1100-1109 entity collision, token "ent_obb" */
+#define G_OAX_ENT_SET_OBB       1100  /* ( int entnum, const float *obb or NULL ): the entity collides as an oriented box:
+                                         center[3] (from r.currentOrigin), axis[3][3], halfExtents[3] */
 
 /* cgame imports */
 #define CG_OAX_DEBUG_SET    1000
@@ -110,6 +113,13 @@ shipped; each feature owns a block.
 #define PHYS_R_LERP_SKELETON        1251  /* cgame only */
 #define PHYS_R_ADD_SKELETAL_ENTITY  1252  /* cgame only */
 #define PHYS_R_MODEL_FRAMES         1253  /* cgame only */
+/* 1260-1269 vehicles and terrain (game and cgame), token "physics_vehicle" */
+#define PHYS_VEHICLE_CREATE         1260
+#define PHYS_VEHICLE_DESTROY        1261
+#define PHYS_VEHICLE_SET_INPUT      1262
+#define PHYS_VEHICLE_GET_STATE      1263
+#define PHYS_WORLD_ADD_TERRAIN      1264
+#define PHYS_VEHICLE_SET_STATE      1265  /* ( int vehicle, const oaxPhysVehicleState_t *in, int flags ) token "physics_vehicle_state" */
 
 /* what a refEntity carries beyond the stock layout (engine tr_types.h) */
 typedef struct {
@@ -117,6 +127,9 @@ typedef struct {
 	float	shaderParms[12];	/* unified lighting (phase 5) */
 	int		lightDefMask;		/* unified lighting (phase 5) */
 } refEntityExt_t;
+#define CG_OAX_CM_TEMP_OBB  1070  /* ( const float *obb, int contents ) -> clip handle, token "ent_obb": an oriented
+                                     box (as G_OAX_ENT_SET_OBB) for trap_CM_TransformedBoxTrace at the entity
+                                     origin with zero angles; good until the next call */
 #define CG_OAX_ULIGHT_BASE  1050  /* 1050-1069 unified lighting */
 #define CG_OAX_R_UPDATELIGHTDEF 1050  /* ( int lightOrdinal, const vec3_t origin, const vec3_t axis[3] or NULL,
                                          const vec3_t rgb, const float parms[12] or NULL, int flags: 1 on ) */

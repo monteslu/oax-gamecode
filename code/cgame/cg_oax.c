@@ -40,6 +40,7 @@ void CG_OAXInit( void ) {
 	CG_OAXULightInit();
 	CG_OAXRenderInit();
 	CG_PhysInit();			/* "physics": the cosmetic world, gibs, ragdolls */
+	CG_OAXVehicleInit();	/* own-vehicle prediction (cg_oax_vehicle.c) */
 	CG_OAXFxInit();
 }
 
@@ -57,4 +58,5 @@ void CG_OAXFrame( void ) {
 	CG_OAXRenderFrame();
 	CG_PhysFrame();
 	CG_OAXFxFrame();
+	CG_OAXVehicleFrameEnd();
 }

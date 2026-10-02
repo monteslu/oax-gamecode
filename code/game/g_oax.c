@@ -17,8 +17,11 @@ void G_OAXPhysFrame( void );		/* g_oax_phys.c */
 void G_OAXPhysShutdown( void );
 void G_OAXCtfStatsInit( void );
 void G_OAXCtfStatsFrame( void );
+void G_OAXPhysFrame( void );		/* g_oax_phys.c */
+void G_OAXPhysShutdown( void );
 void G_OAXNavBotInit( void );
 #include "g_oax_sim.h"
+#include "g_oax_vehicle.h"
 
 static char oaxManifest[1024];
 
@@ -47,6 +50,7 @@ void G_OAXInit( int levelTime, int randomSeed, int restart ) {
 	G_OAXGuiInit();
 	G_OAXMoverInit();
 	G_OAXScriptInit( levelTime, randomSeed, restart );	/* "script" */
+	G_OAXVehicleInit();			/* "physics_vehicle", rule g_oaxVehicles */
 }
 
 void G_OAXRunFrame( int levelTime ) {
@@ -57,7 +61,9 @@ void G_OAXRunFrame( int levelTime ) {
 	G_OAXZoneFrame();
 	G_OAXGuiRunFrame();
 	G_OAXULightFrame();
+	G_OAXVehicleFrameBegin();	/* vehicle controls, before the world steps */
 	G_OAXPhysFrame();			/* "physics": the level world, physscene */
+	G_OAXVehicleFrame();		/* vehicle entities and occupants from the step */
 }
 
 /* after every entity ran this frame (end of G_RunFrame) */
@@ -69,5 +75,6 @@ void G_OAXRunFrameEnd( int levelTime ) {
 void G_OAXShutdown( int restart ) {
 	G_OAXScriptShutdown( restart );
 	G_OAXGuiShutdown();
+	G_OAXVehicleShutdown();
 	G_OAXPhysShutdown();
 }

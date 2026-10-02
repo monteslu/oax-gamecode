@@ -162,3 +162,10 @@ equ trap_OAX_R_AddFx			-1015
 equ trap_OAX_R_AddDecal			-1016
 equ trap_OAX_R_AddTrail			-1017
 equ trap_OAX_R_ClearDecals		-1018
+equ trap_Phys_VehicleCreate               -1261
+equ trap_Phys_VehicleDestroy              -1262
+equ trap_Phys_VehicleSetInput             -1263
+equ trap_Phys_VehicleGetState             -1264
+equ trap_Phys_WorldAddTerrain             -1265
+equ trap_Phys_VehicleSetState             -1266
+equ trap_OAX_CM_TempOBBModel              -1071

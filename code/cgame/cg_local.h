@@ -2075,6 +2075,15 @@ void trap_OAX_R_UpdateLight( int index, const vec3_t origin, const vec3_t *axis,
 // cg_oax_ulight.c
 void CG_OAXULightInit( void );
 void CG_OAXLight( centity_t *cent );
+/* cg_oax_vehicle.c */
+void CG_OAXVehicle( centity_t *cent );
+qboolean CG_OAXVehicleDriving( void );
+void CG_OAXVehicleView( void );
+void CG_OAXVehicleFrameEnd( void );
+void CG_OAXVehicleInit( void );
+void CG_OAXVehicleHUD( void );
+int CG_OAXVehicleClipModel( centity_t *cent, clipHandle_t *cmodel, vec3_t origin );
+qboolean CG_OAXVehicleRider( int num, int fromTime, int toTime, const vec3_t in, vec3_t out );
 void trap_OAX_R_SetLightStyle( int style, float r, float g, float b );
 void trap_OAX_R_SetViewFog( const float *rgb, float density, float start, float end );
 /* cg_oax_fx.c: particles, projected decals, trails (phase 6) */

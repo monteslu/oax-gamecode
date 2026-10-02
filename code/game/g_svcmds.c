@@ -468,6 +468,11 @@ Not Worth Listing Elsewhere
 ================
 */
 void G_OAXPhysScene_f( void );
+void G_OAXVehSeat_f( void );
+void G_OAXVehDrive_f( void );
+void G_OAXVehRocket_f( void );
+void G_OAXVehPlace_f( void );
+void G_OAXVehKick_f( void );
 
 struct {
 	char      *cmd;
@@ -499,6 +504,11 @@ struct {
 	{ "clientkick_game", qfalse, ClientKick_f },
 	{ "endgamenow", qfalse, EndGame_f },
 	{ "physscene", qfalse, G_OAXPhysScene_f },	// oax: g_oax_phys.c, the physics determinism scene
+	{ "vehseat", qfalse, G_OAXVehSeat_f },	// oax: g_oax_vehicle.c, put a client on a vehicle seat (tests)
+	{ "vehdrive", qfalse, G_OAXVehDrive_f },	// oax: g_oax_vehicle.c, drive an empty vehicle for a while (tests)
+	{ "vehrocket", qfalse, G_OAXVehRocket_f },	// oax: g_oax_vehicle.c, fire a rocket from a point (tests)
+	{ "vehplace", qfalse, G_OAXVehPlace_f },	// oax: g_oax_vehicle.c, put a client somewhere standing still (tests)
+	{ "vehkick", qfalse, G_OAXVehKick_f },	// oax: g_oax_vehicle.c, an impulse on a vehicle (tests)
 };
 
 /*

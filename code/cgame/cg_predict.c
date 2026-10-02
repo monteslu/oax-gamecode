@@ -96,6 +96,8 @@ static void CG_ClipMoveToEntities ( const vec3_t start, const vec3_t mins, const
 	centity_t	*cent;
 
 	for ( i = 0 ; i < cg_numSolidEntities ; i++ ) {
+		int		veh;
+
 		cent = cg_solidEntities[ i ];
 		ent = &cent->currentState;
 
@@ -103,11 +105,18 @@ static void CG_ClipMoveToEntities ( const vec3_t start, const vec3_t mins, const
 			continue;
 		}
 
+		veh = ent->solid == SOLID_BMODEL ? 0 : CG_OAXVehicleClipModel( cent, &cmodel, origin );
+		if ( veh < 0 ) {
+			continue;
+		}
 		if ( ent->solid == SOLID_BMODEL ) {
 			// special value for bmodel
 			cmodel = trap_CM_InlineModel( ent->modelindex );
 			VectorCopy( cent->lerpAngles, angles );
 			BG_EvaluateTrajectory( &cent->currentState.pos, cg.physicsTime, origin );
+		} else if ( veh > 0 ) {
+			// oax vehicles: the oriented box the server collides players with
+			VectorCopy( vec3_origin, angles );
 		} else {
 			// encoded bbox
 			x = (ent->solid & 255);

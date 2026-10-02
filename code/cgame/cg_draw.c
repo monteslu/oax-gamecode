@@ -3611,6 +3611,7 @@ static void CG_Draw2D(stereoFrame_t stereoFrame) {
 #endif
 
 			CG_DrawReward();
+			CG_OAXVehicleHUD();		// oax: the vehicle's health and speed (cg_oax_vehicle.c)
 		}
 
 		if (cgs.gametype >= GT_TEAM && cgs.ffa_gt != 1) {

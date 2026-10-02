@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "g_local.h"
 #include "g_oax_sim.h"
+#include "g_oax_vehicle.h"
 
 
 /*
@@ -247,6 +248,10 @@ void	G_TouchTriggers( gentity_t *ent ) {
 	//ELIMINATION LMS
 	// dead clients don't activate triggers! The reason our pm_spectators can't do anything
 	if ( ent->client->ps.stats[STAT_HEALTH] <= 0 && ent->client->ps.pm_type != PM_SPECTATOR) {
+		return;
+	}
+	// oax vehicles: nothing is touched from a seat (get out for flags and items)
+	if ( ent->client->ps.pm_flags & PMF_OAX_VEHICLE ) {
 		return;
 	}
 
@@ -984,6 +989,8 @@ void ClientThink_real( gentity_t *ent ) {
 
 	// oax in-world GUIs: a player aiming at a GUI clicks it instead of firing
 	G_OAXGuiClientThink( ent, ucmd );
+	// oax vehicles: use gets in and out, a driver's moves drive
+	G_OAXVehicleClientThink( ent, ucmd );
 
 	// Let go of the hook if we aren't firing
 	if ( client->ps.weapon == WP_GRAPPLING_HOOK &&
