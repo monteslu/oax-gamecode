@@ -109,3 +109,14 @@ equ trap_R_GetViewPosition		-114
 ; oax engine extensions (oax_public.h): number N is equ -(N+1)
 equ trap_OAX_DebugSet			-1001
 equ trap_OAX_BSPXRead			-1002
+equ trap_OAX_R_SetViewFog		-1013
+equ trap_OAX_S_SetReverb		-1021
+equ trap_OAX_CG_GuiLoad			-1031
+equ trap_OAX_CG_GuiFree			-1032
+equ trap_OAX_CG_GuiSetState		-1033
+equ trap_OAX_CG_GuiActivate		-1034
+equ trap_OAX_R_AddRefEntityExt	-1035
+equ trap_OAX_CG_GuiTrace		-1036
+equ trap_OAX_CG_GuiCursor		-1037
+equ trap_OAX_R_UpdateLight		-1051
+equ trap_OAX_R_SetLightStyle	-1011

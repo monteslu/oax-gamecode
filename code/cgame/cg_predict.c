@@ -26,6 +26,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // It also handles local physics interaction, like fragments bouncing off walls
 
 #include "cg_local.h"
+#include "cg_oax_sim.h"
+
+extern int cg_oaxMispredicts;	/* cg_oax.c */
 
 static	pmove_t		cg_pmove;
 
@@ -674,6 +677,7 @@ void CG_PredictPlayerState( void ) {
 	cg_pmove.pmove_msec = pmove_msec.integer;
         cg_pmove.pmove_float = pmove_float.integer;
         cg_pmove.pmove_flags = cgs.dmflags;
+	CG_OAXZonePmove( &cg_pmove );
         
 
 //unlagged - optimized prediction
@@ -810,6 +814,7 @@ void CG_PredictPlayerState( void ) {
 				VectorSubtract( oldPlayerState.origin, adjusted, delta );
 				len = VectorLength( delta );
 				if ( len > 0.1 ) {
+					cg_oaxMispredicts++;
 					if ( cg_showmiss.integer ) {
 						CG_Printf("Prediction miss: %f\n", len);
 					}
@@ -838,6 +843,9 @@ void CG_PredictPlayerState( void ) {
 		// don't predict gauntlet firing, which is only supposed to happen
 		// when it actually inflicts damage
 		cg_pmove.gauntletHit = qfalse;
+
+		// oax in-world GUIs: aiming at a GUI clicks instead of firing
+		CG_OAXGuiFilterCmd( &cg_pmove.cmd );
 
 		if ( cg_pmove.pmove_fixed ) {
 			cg_pmove.cmd.serverTime = ((cg_pmove.cmd.serverTime + pmove_msec.integer-1) / pmove_msec.integer) * pmove_msec.integer;

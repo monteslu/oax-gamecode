@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "../qcommon/q_shared.h"
 #include "bg_public.h"
+#include "bg_oax_traj.h"
 
 /*QUAKED item_***** ( 0 0 0 ) (-16 -16 -16) (16 16 16) suspended
 DO NOT USE THIS CLASS, IT JUST HOLDS GENERAL INFORMATION.
@@ -1391,6 +1392,11 @@ void BG_EvaluateTrajectory(const trajectory_t *tr, int atTime, vec3_t result) {
 			result[2] -= 0.5 * DEFAULT_GRAVITY * deltaTime * deltaTime; // FIXME: local gravity...
 			break;
 		default:
+#ifndef UI
+			if (BG_OAXEvaluateTrajectory(tr, atTime, result)) {
+				break;
+			}
+#endif
 			Com_Error(ERR_DROP, "BG_EvaluateTrajectory: unknown trType: %i", tr->trTime);
 			break;
 	}
@@ -1434,6 +1440,11 @@ void BG_EvaluateTrajectoryDelta(const trajectory_t *tr, int atTime, vec3_t resul
 			result[2] -= DEFAULT_GRAVITY * deltaTime; // FIXME: local gravity...
 			break;
 		default:
+#ifndef UI
+			if (BG_OAXEvaluateTrajectoryDelta(tr, atTime, result)) {
+				break;
+			}
+#endif
 			Com_Error(ERR_DROP, "BG_EvaluateTrajectoryDelta: unknown trType: %i", tr->trTime);
 			break;
 	}

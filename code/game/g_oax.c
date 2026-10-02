@@ -9,6 +9,11 @@ engine.
 ===========================================================================
 */
 #include "g_local.h"
+#include "g_oax_mover.h"
+#include "g_oax_script.h"
+
+void G_OAXBindRunFrame( void );
+#include "g_oax_sim.h"
 
 static char oaxManifest[1024];
 
@@ -32,11 +37,27 @@ void G_OAXInit( int levelTime, int randomSeed, int restart ) {
 	G_OAXStatsInit();
 	BG_OAXDebugSet( "g_oax", va( "%i", OAX_VERSION ) );
 	BG_OAXDebugSetInt( "g_manifest_len", len );
+	G_OAXGuiInit();
+	G_OAXMoverInit();
+	G_OAXScriptInit( levelTime, randomSeed, restart );	/* "script" */
 }
 
 void G_OAXRunFrame( int levelTime ) {
 	G_OAXStatsFrame();
+	G_OAXMoverRunFrame();
+	G_OAXPortalRunFrame();		/* "portal": distance closing */
+	G_OAXZoneFrame();
+	G_OAXGuiRunFrame();
+	G_OAXULightFrame();
+}
+
+/* after every entity ran this frame (end of G_RunFrame) */
+void G_OAXRunFrameEnd( int levelTime ) {
+	G_OAXBindRunFrame();			/* script bind() */
+	G_OAXScriptRunFrame( levelTime );	/* "script": the pump, as D3 serviced events after thinking */
 }
 
 void G_OAXShutdown( int restart ) {
+	G_OAXScriptShutdown( restart );
+	G_OAXGuiShutdown();
 }

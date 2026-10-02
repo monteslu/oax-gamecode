@@ -567,6 +567,9 @@ static void CG_ConfigStringModified( void ) {
 	else if ( num == CS_SHADERSTATE ) {
 		CG_ShaderStateChanged();
 	}
+	else if ( num >= CS_MAX ) {
+		CG_OAXConfigString( num );
+	}
 		
 }
 

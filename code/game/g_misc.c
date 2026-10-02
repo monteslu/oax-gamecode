@@ -63,6 +63,11 @@ Lights pointed at a target will be spotlights.
 "radius" overrides the default 64 unit radius of a spotlight at the target point.
 */
 void SP_light( gentity_t *self ) {
+	// oax: switched lightmap styles (32-63), then lights the unified
+	// lighting model lets the game control, stay as entities
+	if ( G_OAXLightStyleSpawn( self ) || G_OAXLightSpawn( self ) ) {
+		return;
+	}
 	G_FreeEntity( self );
 }
 

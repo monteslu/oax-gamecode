@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // g_utils.c -- misc utility functions for game module
 
 #include "g_local.h"
+#include "g_oax_script.h"
 
 typedef struct {
 	char oldShader[MAX_QPATH];
@@ -241,6 +242,8 @@ void G_UseTargets( gentity_t *ent, gentity_t *activator )
 	if ( !ent ) {
 		return;
 	}
+
+	G_OAXScriptUseCall( ent, activator );	/* oax: a "call" key runs a script function */
 
 	if (ent->targetShaderName && ent->targetShaderNewName) {
 		float f = level.time * 0.001;

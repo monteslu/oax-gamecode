@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 //
 #include "g_local.h"
+#include "g_oax_sim.h"
 
 #define	MISSILE_PRESTEP_TIME	50
 
@@ -541,6 +542,9 @@ void G_RunMissile( gentity_t *ent )
 		// ignore interactions with the missile owner
 		passent = ent->r.ownerNum;
 	}
+	// oax: a seamless warp zone moves the missile before it traces
+	G_OAXWarpMissile( ent, origin );
+
 	// trace a line from the previous position to the current position
 	trap_Trace( &tr, ent->r.currentOrigin, ent->r.mins, ent->r.maxs, origin, passent, ent->clipmask );
 

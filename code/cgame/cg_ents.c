@@ -574,8 +574,10 @@ static void CG_Mover( centity_t *cent ) {
 		ent.hModel = cgs.gameModels[s1->modelindex];
 	}
 
-	// add to refresh list
-	trap_R_AddRefEntityToScene(&ent);
+	// add to refresh list (oax: a func_oax_gui carries its GUI)
+	if ( !CG_OAXGuiAddEntity( cent, &ent ) ) {
+		trap_R_AddRefEntityToScene(&ent);
+	}
 
 	// add the secondary model
 	if ( s1->modelindex2 ) {
@@ -1058,6 +1060,9 @@ static void CG_AddCEntity( centity_t *cent ) {
 		break;
 	case ET_TEAM:
 		CG_TeamBase( cent );
+		break;
+	case ET_OAX_LIGHT:
+		CG_OAXLight( cent );
 		break;
 	}
 }

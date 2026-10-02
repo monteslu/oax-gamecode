@@ -1,0 +1,18 @@
+/*
+oax_defs.script: the engine's script compiler includes this file at the
+top of every file it compiles (DOOM-3 did the same with its own defs file).
+Constants and macros only; written for oax.
+*/
+
+#ifndef __OAX_DEFS_SCRIPT__
+#define __OAX_DEFS_SCRIPT__
+
+#define TRUE				1
+#define FALSE				0
+#define M_PI				3.14159265358979323846
+
+// mover lock() values
+#define UNLOCKED			0
+#define LOCKED				1
+
+#endif

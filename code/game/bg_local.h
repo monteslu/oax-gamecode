@@ -51,6 +51,9 @@ typedef struct {
 	vec3_t		previous_origin;
 	vec3_t		previous_velocity;
 	int			previous_waterlevel;
+
+	int			oaxZone;			// zone slot + 1 for this step, 0 none (bg_oax_zone.h)
+	int			oaxLevelGravity;	// ps->gravity before the zone replaced it
 } pml_t;
 
 extern	pmove_t		*pm;
@@ -74,6 +77,12 @@ extern	int		c_pmove;
 
 void PM_ClipVelocity( vec3_t in, vec3_t normal, vec3_t out, float overbounce );
 void PM_AddTouchEnt( int entityNum );
+
+// bg_oax_zone.c
+void PM_OAXZoneBegin( void );
+void PM_OAXZoneEnd( void );
+void PM_OAXZoneCurrent( void );
+float PM_OAXZoneFriction( void );
 void PM_AddEvent( int newEvent );
 
 qboolean	PM_SlideMove( qboolean gravity );

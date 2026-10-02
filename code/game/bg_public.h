@@ -233,6 +233,10 @@ typedef struct {
 	// these will be different functions during game and cgame
 	void		(*trace)( trace_t *results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end, int passEntityNum, int contentMask );
 	int			(*pointcontents)( const vec3_t point, int passEntityNum );
+
+	// oax zone volumes (bg_oax_zone.h): the zone slot containing a point, or
+	// -1; left NULL on maps without zones, which keeps stock movement
+	int			(*oaxZoneAt)( const vec3_t point );
 } pmove_t;
 
 // if a full pmove isn't done on the client, you can just update the angles
@@ -806,6 +810,7 @@ typedef enum {
 	ET_INVISIBLE,
 	ET_GRAPPLE,				// grapple hooked on wall
 	ET_TEAM,
+	ET_OAX_LIGHT,			// oax unified lighting: a light the game controls
 
 	ET_EVENTS				// any of the EV_* events can be added freestanding
 							// by setting eType to ET_EVENTS + eventNum

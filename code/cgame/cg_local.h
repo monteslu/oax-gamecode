@@ -2059,5 +2059,22 @@ void	trap_R_GetViewPosition( vec3_t point );
 /* cg_oax.c: oax map features */
 void CG_OAXInit( void );
 void CG_OAXFrame( void );
+void CG_OAXConfigString( int num );
+
+/* cg_oax_gui.c: in-world GUIs */
+void CG_OAXGuiInit( void );
+void CG_OAXGuiFrame( void );
+qboolean CG_OAXGuiAddEntity( centity_t *cent, refEntity_t *ent );
+void CG_OAXGuiFilterCmd( usercmd_t *cmd );
 void trap_OAX_DebugSet( const char *name, const char *value );
 int trap_OAX_BSPXRead( const char *lump, void *buf, int size );
+void trap_OAX_R_UpdateLight( int index, const vec3_t origin, const vec3_t *axis, const vec3_t rgb, const float *parms, int flags );
+
+// cg_oax_ulight.c
+void CG_OAXULightInit( void );
+void CG_OAXLight( centity_t *cent );
+void trap_OAX_R_SetLightStyle( int style, float r, float g, float b );
+void trap_OAX_R_SetViewFog( const float *rgb, float density, float start, float end );
+/* cg_oax_render.c: sky portals, light styles, view fog test */
+void CG_OAXRenderInit( void );
+void CG_OAXRenderFrame( void );

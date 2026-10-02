@@ -465,3 +465,47 @@ void trap_OAX_DebugSet( const char *name, const char *value ) {
 int trap_OAX_BSPXRead( const char *lump, void *buf, int size ) {
 	return syscall( CG_OAX_BSPX_READ, lump, buf, size );
 }
+
+void trap_OAX_R_SetViewFog( const vec3_t rgb, float density, float start, float end ) {
+	syscall( CG_OAX_R_SETVIEWFOG, rgb, PASSFLOAT( density ), PASSFLOAT( start ), PASSFLOAT( end ) );
+}
+
+void trap_OAX_S_SetReverb( const char *preset, float decay, float wet ) {
+	syscall( CG_OAX_S_SETREVERB, preset, PASSFLOAT( decay ), PASSFLOAT( wet ) );
+}
+
+int trap_OAX_CG_GuiLoad( const char *file ) {
+	return syscall( CG_OAX_GUI_LOAD, file );
+}
+
+void trap_OAX_CG_GuiFree( int handle ) {
+	syscall( CG_OAX_GUI_FREE, handle );
+}
+
+void trap_OAX_CG_GuiSetState( int handle, const char *key, const char *value ) {
+	syscall( CG_OAX_GUI_SETSTATE, handle, key, value );
+}
+
+void trap_OAX_CG_GuiActivate( int handle, int activate ) {
+	syscall( CG_OAX_GUI_ACTIVATE, handle, activate );
+}
+
+void trap_OAX_R_AddRefEntityExt( const refEntity_t *re, const refEntityExt_t *ext ) {
+	syscall( CG_OAX_R_ADDREFENTITYEXT, re, ext );
+}
+
+int trap_OAX_CG_GuiTrace( int inlineModel, const vec3_t origin, const vec3_t angles, const vec3_t start, const vec3_t end, float *xyFrac ) {
+	return syscall( CG_OAX_GUI_TRACE, inlineModel, origin, angles, start, end, xyFrac );
+}
+
+void trap_OAX_CG_GuiCursor( int handle, float x, float y ) {
+	syscall( CG_OAX_GUI_CURSOR, handle, PASSFLOAT( x ), PASSFLOAT( y ) );
+}
+
+/* unified lighting: drive a map light (entity-lump ordinal); axis, parms may be NULL */
+void trap_OAX_R_UpdateLight( int index, const vec3_t origin, const vec3_t *axis, const vec3_t rgb, const float *parms, int flags ) {
+	syscall( CG_OAX_R_UPDATELIGHTDEF, index, origin, axis, rgb, parms, flags );
+}
+void trap_OAX_R_SetLightStyle( int style, float r, float g, float b ) {
+	syscall( CG_OAX_R_SETLIGHTSTYLE, style, PASSFLOAT( r ), PASSFLOAT( g ), PASSFLOAT( b ) );
+}

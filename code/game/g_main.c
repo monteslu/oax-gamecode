@@ -2714,6 +2714,8 @@ void G_RunFrame( int levelTime )
 	G_UnTimeShiftAllClients( NULL );
 //unlagged - backward reconciliation #2
 
+	G_OAXRunFrameEnd( levelTime );
+
 //end = trap_Milliseconds();
 
 //start = trap_Milliseconds();

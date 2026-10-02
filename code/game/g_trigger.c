@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 //
 #include "g_local.h"
+#include "g_oax_sim.h"
 
 
 void InitTrigger( gentity_t *self )
@@ -337,6 +338,11 @@ void SP_trigger_teleport( gentity_t *self )
 
 	self->s.eType = ET_TELEPORT_TRIGGER;
 	self->touch = trigger_teleporter_touch;
+
+	// oax: SEAMLESS warp zone (g_oax_warp.c)
+	if ( self->spawnflags & 4 ) {
+		G_OAXWarpSpawn( self );
+	}
 
 	trap_LinkEntity (self);
 }

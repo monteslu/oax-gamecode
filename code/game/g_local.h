@@ -1435,12 +1435,29 @@ void monster_die (gentity_t *self, gentity_t *inflictor, gentity_t *attacker, in
 /* g_oax.c: oax map features */
 void G_OAXInit( int levelTime, int randomSeed, int restart );
 void G_OAXRunFrame( int levelTime );
+void G_OAXRunFrameEnd( int levelTime );
 void G_OAXShutdown( int restart );
 void trap_OAX_DebugSet( const char *name, const char *value );
 int trap_OAX_BSPXRead( const char *lump, void *buf, int size );
+
+// g_oax_ulight.c
+extern int g_oaxSpawnOrdinal;
+void G_OAXULightReset( void );
+qboolean G_OAXLightSpawn( gentity_t *ent );
+void G_OAXULightFrame( void );
 const char *G_OAXManifest( void );
 
+/* g_oax_gui.c: in-world GUIs (func_oax_gui) */
+void SP_func_oax_gui( gentity_t *ent );
+void G_OAXGuiInit( void );
+void G_OAXGuiShutdown( void );
+void G_OAXGuiRunFrame( void );
+void G_OAXGuiClientThink( gentity_t *ent, usercmd_t *ucmd );
+/* g_oax_guiscript.c: a GUI's runScript (replaced by the map script VM) */
+void G_OAXGuiRunScript( const char *func, gentity_t *self );
 /* g_oax_stats.c: match statistics for map validation */
 void G_OAXStatsInit( void );
 void G_OAXStatsFrame( void );
 void G_OAXItemReached( gentity_t *item );
+/* g_oax_lightstyle.c */
+qboolean G_OAXLightStyleSpawn( gentity_t *ent );

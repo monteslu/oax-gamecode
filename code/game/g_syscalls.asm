@@ -227,3 +227,23 @@ equ trap_BotLibSourceFileAndLine		-582
 ; oax engine extensions (oax_public.h): number N is equ -(N+1)
 equ trap_OAX_DebugSet					-1001
 equ trap_OAX_BSPXRead					-1002
+equ trap_OAX_GuiLoad					-1041
+equ trap_OAX_GuiFree					-1042
+equ trap_OAX_GuiSetState				-1043
+equ trap_OAX_GuiGetState				-1044
+equ trap_OAX_GuiHandleEvent				-1045
+equ trap_OAX_GuiTrace					-1046
+equ trap_OAX_GuiActivate				-1047
+equ trap_OAX_GuiNamedEvent				-1048
+equ trap_OAX_GuiStateInfo				-1049
+equ trap_OAX_ScriptInit					-1011
+equ trap_OAX_ScriptRegisterEvent		-1012
+equ trap_OAX_ScriptCompileFile			-1013
+equ trap_OAX_ScriptSetEntity			-1014
+equ trap_OAX_ScriptStartThread			-1015
+equ trap_OAX_ScriptRun					-1016
+equ trap_OAX_ScriptReturn				-1017
+equ trap_OAX_ScriptObjectDone			-1018
+equ trap_OAX_ScriptKillThread			-1019
+equ trap_OAX_ScriptShutdown				-1020
+equ trap_OAX_ScriptNumThreads			-1021

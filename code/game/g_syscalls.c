@@ -800,3 +800,86 @@ void trap_OAX_DebugSet( const char *name, const char *value ) {
 int trap_OAX_BSPXRead( const char *lump, void *buf, int size ) {
 	return syscall( G_OAX_BSPX_READ, lump, buf, size );
 }
+
+int trap_OAX_GuiLoad( const char *file ) {
+	return syscall( G_OAX_GUI_LOAD, file );
+}
+
+void trap_OAX_GuiFree( int handle ) {
+	syscall( G_OAX_GUI_FREE, handle );
+}
+
+void trap_OAX_GuiSetState( int handle, const char *key, const char *value ) {
+	syscall( G_OAX_GUI_SETSTATE, handle, key, value );
+}
+
+int trap_OAX_GuiGetState( int handle, const char *key, char *buf, int size ) {
+	return syscall( G_OAX_GUI_GETSTATE, handle, key, buf, size );
+}
+
+int trap_OAX_GuiHandleEvent( int handle, float x, float y, int buttons, int time, char *cmds, int size ) {
+	return syscall( G_OAX_GUI_HANDLE_EVENT, handle, PASSFLOAT( x ), PASSFLOAT( y ), buttons, time, cmds, size );
+}
+
+int trap_OAX_GuiTrace( int entnum, const vec3_t start, const vec3_t end, float *xyFrac ) {
+	return syscall( G_OAX_GUI_TRACE, entnum, start, end, xyFrac );
+}
+
+int trap_OAX_GuiActivate( int handle, int activate, int time, char *cmds, int size ) {
+	return syscall( G_OAX_GUI_ACTIVATE, handle, activate, time, cmds, size );
+}
+
+int trap_OAX_GuiNamedEvent( int handle, const char *name, int time, char *cmds, int size ) {
+	return syscall( G_OAX_GUI_NAMED_EVENT, handle, name, time, cmds, size );
+}
+
+int trap_OAX_GuiStateInfo( int handle, char *buf, int size ) {
+	return syscall( G_OAX_GUI_STATE_INFO, handle, buf, size );
+}
+
+/* map scripting (g_oax_script.h) */
+#include "g_oax_script.h"
+
+int trap_OAX_ScriptInit( int randomSeed ) {
+	return syscall( G_OAX_SCRIPT_INIT, randomSeed );
+}
+
+int trap_OAX_ScriptRegisterEvent( const char *name, const char *argfmt, int ret, int flags ) {
+	return syscall( G_OAX_SCRIPT_REGISTER_EVENT, name, argfmt, ret, flags );
+}
+
+int trap_OAX_ScriptCompileFile( const char *path ) {
+	return syscall( G_OAX_SCRIPT_COMPILE_FILE, path );
+}
+
+int trap_OAX_ScriptSetEntity( const char *name, int handle ) {
+	return syscall( G_OAX_SCRIPT_SET_ENTITY, name, handle );
+}
+
+int trap_OAX_ScriptStartThread( const char *func, int self ) {
+	return syscall( G_OAX_SCRIPT_START_THREAD, func, self );
+}
+
+int trap_OAX_ScriptRun( int levelTime, oaxScriptCall_t *call ) {
+	return syscall( G_OAX_SCRIPT_RUN, levelTime, call );
+}
+
+void trap_OAX_ScriptReturn( const oaxScriptValue_t *value, const char *string ) {
+	syscall( G_OAX_SCRIPT_RETURN, value, string );
+}
+
+void trap_OAX_ScriptObjectDone( int threadNum, int handle ) {
+	syscall( G_OAX_SCRIPT_OBJECT_DONE, threadNum, handle );
+}
+
+void trap_OAX_ScriptKillThread( int threadNum ) {
+	syscall( G_OAX_SCRIPT_KILL_THREAD, threadNum );
+}
+
+void trap_OAX_ScriptShutdown( void ) {
+	syscall( G_OAX_SCRIPT_SHUTDOWN );
+}
+
+int trap_OAX_ScriptNumThreads( void ) {
+	return syscall( G_OAX_SCRIPT_NUM_THREADS );
+}

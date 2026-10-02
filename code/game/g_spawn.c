@@ -22,6 +22,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 
 #include "g_local.h"
+#include "g_oax_script.h"
+#include "g_oax_sim.h"
 
 qboolean	G_SpawnString( const char *key, const char *defaultString, char **out ) {
 	int		i;
@@ -144,7 +146,11 @@ void SP_func_bobbing (gentity_t *ent);
 void SP_func_pendulum( gentity_t *ent );
 void SP_func_button (gentity_t *ent);
 void SP_func_door (gentity_t *ent);
+void SP_func_oax_gui (gentity_t *ent);
 void SP_func_train (gentity_t *ent);
+void SP_func_oax_mover( gentity_t *ent );
+void SP_func_oax_splinemover( gentity_t *ent );
+void SP_info_oax_spline( gentity_t *ent );
 void SP_func_timer (gentity_t *self);
 
 void SP_trigger_always (gentity_t *ent);
@@ -177,6 +183,7 @@ void SP_path_corner (gentity_t *self);
 void SP_misc_teleporter_dest (gentity_t *self);
 void SP_misc_model(gentity_t *ent);
 void SP_misc_portal_camera(gentity_t *ent);
+void SP_misc_oax_skyportal(gentity_t *ent);
 void SP_misc_portal_surface(gentity_t *ent);
 
 void SP_shooter_rocket( gentity_t *ent );
@@ -218,11 +225,15 @@ spawn_t	spawns[] = {
 	{"func_plat", SP_func_plat},
 	{"func_button", SP_func_button},
 	{"func_door", SP_func_door},
+	{"func_oax_gui", SP_func_oax_gui},	/* oax in-world GUIs */
 	{"func_static", SP_func_static},
 	{"func_rotating", SP_func_rotating},
 	{"func_bobbing", SP_func_bobbing},
 	{"func_pendulum", SP_func_pendulum},
 	{"func_train", SP_func_train},
+	{"func_oax_mover", SP_func_oax_mover},
+	{"func_oax_splinemover", SP_func_oax_splinemover},
+	{"info_oax_spline", SP_info_oax_spline},
 	{"func_group", SP_info_null},
 	{"func_timer", SP_func_timer},			// rename trigger_timer?
 
@@ -235,6 +246,7 @@ spawn_t	spawns[] = {
 	{"trigger_multiple", SP_trigger_multiple},
 	{"trigger_push", SP_trigger_push},
 	{"trigger_teleport", SP_trigger_teleport},
+	{"func_oax_zone", SP_func_oax_zone},
 	{"trigger_hurt", SP_trigger_hurt},
 
 	// targets perform no action by themselves, but must be triggered
@@ -254,12 +266,23 @@ spawn_t	spawns[] = {
 	{"target_push", SP_target_push},
 
 	{"light", SP_light},
+	{"rtlight", SP_light},		// oax: realtime light in hybrid maps
 	{"path_corner", SP_path_corner},
+
+	// oax map scripting and portals (g_oax_triggers.c, g_oax_portal.c)
+	{"target_oax_script", SP_target_oax_script},
+	{"trigger_oax_count", SP_trigger_oax_count},
+	{"trigger_oax_timer", SP_trigger_oax_timer},
+	{"trigger_oax_entityname", SP_trigger_oax_entityname},
+	{"target_oax_setkeyval", SP_target_oax_setkeyval},
+	{"target_oax_shaderparm", SP_target_oax_shaderparm},
+	{"func_oax_portal", SP_func_oax_portal},
 
 	{"misc_teleporter_dest", SP_misc_teleporter_dest},
 	{"misc_model", SP_misc_model},
 	{"misc_portal_surface", SP_misc_portal_surface},
 	{"misc_portal_camera", SP_misc_portal_camera},
+	{"misc_oax_skyportal", SP_misc_oax_skyportal},
 
 	{"shooter_rocket", SP_shooter_rocket},
 	{"shooter_grenade", SP_shooter_grenade},
@@ -512,6 +535,8 @@ void G_SpawnGEntityFromSpawnVars( void ) {
 	// if we didn't get a classname, don't bother spawning anything
 	if ( !G_CallSpawn( ent ) ) {
 		G_FreeEntity( ent );
+	} else {
+		G_OAXSpawnEntity( ent );	// oax: keys oax features read later ("call")
 	}
 }
 
@@ -681,6 +706,7 @@ void G_SpawnEntitiesFromString( void ) {
 	// the worldspawn is not an actual entity, but it still
 	// has a "spawn" function to perform any global setup
 	// needed by a level (setting configstrings or cvars, etc)
+	G_OAXULightReset();
 	if ( !G_ParseSpawnVars() ) {
 		G_Error( "SpawnEntities: no entities" );
 	}
@@ -688,6 +714,7 @@ void G_SpawnEntitiesFromString( void ) {
 
 	// parse ents
 	while( G_ParseSpawnVars() ) {
+		g_oaxSpawnOrdinal++;	// oax: the entity-lump ordinal (renderer light key)
 		G_SpawnGEntityFromSpawnVars();
 	}	
 

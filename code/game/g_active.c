@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 
 #include "g_local.h"
+#include "g_oax_sim.h"
 
 
 /*
@@ -981,6 +982,9 @@ void ClientThink_real( gentity_t *ent ) {
 		client->ps.speed *= 1.3;
 	}
 
+	// oax in-world GUIs: a player aiming at a GUI clicks it instead of firing
+	G_OAXGuiClientThink( ent, ucmd );
+
 	// Let go of the hook if we aren't firing
 	if ( client->ps.weapon == WP_GRAPPLING_HOOK &&
 		client->hook && !( ucmd->buttons & BUTTON_ATTACK ) ) {
@@ -1049,6 +1053,7 @@ void ClientThink_real( gentity_t *ent ) {
 	pm.pmove_msec = pmove_msec.integer;
 	pm.pmove_float = pmove_float.integer;
 	pm.pmove_flags = g_dmflags.integer;
+	G_OAXZonePmove( &pm );
 
 	VectorCopy( client->ps.origin, client->oldOrigin );
 

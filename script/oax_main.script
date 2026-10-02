@@ -1,0 +1,6 @@
+/*
+oax_main.script: compiled first on every map that has a maps/<map>.script.
+Written for oax (no DOOM-3 data).
+*/
+
+#include "script/oax_events.script"

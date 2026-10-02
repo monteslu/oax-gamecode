@@ -1,0 +1,128 @@
+/*
+oax_events.script: every event a script can call, declared with the types
+the engine and the game module registered (a mismatch is a compile error).
+Written for oax (no DOOM-3 data); the names and semantics follow DOOM-3's
+events where one exists.
+
+sys.name( ... )      events of the script thread or the game
+$entity.name( ... )  events of a game entity
+
+Arguments the engine calls "int" are floats in scripts (truncated).
+*/
+
+/***********************************************************************
+  thread events, run by the engine's script VM (sys.*)
+***********************************************************************/
+
+scriptEvent	void	terminate( float threadNumber );
+scriptEvent	void	pause();
+scriptEvent	void	wait( float seconds );
+scriptEvent	void	waitFrame();
+// wait until a mover finishes its move or rotation (no wait if it is idle)
+scriptEvent	void	waitFor( entity mover );
+scriptEvent	void	waitForThread( float threadNumber );
+scriptEvent	void	print( string text );
+scriptEvent	void	println( string text );
+scriptEvent	void	assert( float condition );
+// 0 <= result < range; the same numbers on every build for a given map
+scriptEvent	float	random( float range );
+// level time in seconds
+scriptEvent	float	getTime();
+scriptEvent	void	killthread( string threadName );
+scriptEvent	void	threadname( string name );
+scriptEvent	vector	angToForward( vector angles );
+scriptEvent	vector	angToRight( vector angles );
+scriptEvent	vector	angToUp( vector angles );
+// degrees
+scriptEvent	float	sin( float degrees );
+scriptEvent	float	cos( float degrees );
+scriptEvent	float	sqrt( float square );
+scriptEvent	vector	vecNormalize( vector vec );
+scriptEvent	float	vecLength( vector vec );
+scriptEvent	float	DotProduct( vector vec1, vector vec2 );
+scriptEvent	vector	CrossProduct( vector vec1, vector vec2 );
+scriptEvent	vector	VecToAngles( vector vec );
+scriptEvent	void	warning( string text );
+// ends the calling thread with the message
+scriptEvent	void	error( string text );
+scriptEvent	float	strLength( string text );
+scriptEvent	string	strLeft( string text, float num );
+scriptEvent	string	strRight( string text, float num );
+scriptEvent	string	strSkip( string text, float num );
+scriptEvent	string	strMid( string text, float start, float num );
+scriptEvent	float	strToFloat( string text );
+scriptEvent	float	isClient();
+scriptEvent	float	isMultiplayer();
+scriptEvent	float	getFrameTime();
+scriptEvent	float	getTicsPerSecond();
+
+/***********************************************************************
+  game events (sys.*)
+***********************************************************************/
+
+// the entity whose targetname is name, $null_entity if none
+scriptEvent	entity	getEntity( string name );
+// use (activate) an entity, as a trigger would
+scriptEvent	void	trigger( entity ent );
+scriptEvent	void	say( string text );
+// keys for the next spawn()
+scriptEvent	void	setSpawnArg( string key, string value );
+scriptEvent	entity	spawn( string classname );
+
+/***********************************************************************
+  entity events ($entity.*)
+***********************************************************************/
+
+scriptEvent	void	remove();
+// not drawn, not solid
+scriptEvent	void	hide();
+scriptEvent	void	show();
+// use the entity (activator may be $null_entity)
+scriptEvent	void	activate( entity activator );
+scriptEvent	vector	getOrigin();
+scriptEvent	void	setOrigin( vector origin );
+scriptEvent	vector	getAngles();
+scriptEvent	void	setAngles( vector angles );
+// targetname
+scriptEvent	string	getName();
+// origin, angles, angle, speed, wait, count, dmg, health, spawnflags,
+// target, targetname, message, shaderParm0..11
+scriptEvent	void	setKey( string key, string value );
+scriptEvent	void	startSound( string sound );
+// follow master, keeping today's offset
+scriptEvent	void	bind( entity master );
+scriptEvent	void	unbind();
+scriptEvent	void	setShaderParm( float parm, float value );
+
+// lights
+scriptEvent	void	on();
+scriptEvent	void	off();
+scriptEvent	void	fadeInLight( float seconds );
+scriptEvent	void	fadeOutLight( float seconds );
+scriptEvent	void	setColor( vector color );
+scriptEvent	void	setLightParm( float parm, float value );
+
+// doors (func_door and other two-position movers)
+scriptEvent	void	open();
+scriptEvent	void	close();
+scriptEvent	void	lock( float locked );
+scriptEvent	float	isOpen();
+scriptEvent	float	isLocked();
+
+// area portals: on a func_oax_portal, or on any entity that spans one
+scriptEvent	void	openPortal();
+scriptEvent	void	closePortal();
+
+// movers (func_oax_mover, func_oax_splinemover)
+scriptEvent	void	moveTo( entity targetEntity );
+scriptEvent	void	moveToPos( vector pos );
+scriptEvent	void	rotateTo( vector angles );
+scriptEvent	void	rotateOnce( vector angles );
+scriptEvent	void	speed( float speed );
+scriptEvent	void	time( float seconds );
+scriptEvent	void	accelTime( float seconds );
+scriptEvent	void	decelTime( float seconds );
+scriptEvent	void	startSpline( entity spline );
+scriptEvent	void	stopSpline();
+scriptEvent	float	isMoving();
+scriptEvent	float	isRotating();

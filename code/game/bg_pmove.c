@@ -229,6 +229,10 @@ static void PM_Friction( void )
 		drop += speed*pm_spectatorfriction*pml.frametime;
 	}
 
+	if ( pml.oaxZone ) {
+		drop *= PM_OAXZoneFriction();
+	}
+
 	// scale the velocity
 	newspeed = speed - drop;
 	if (newspeed < 0) {
@@ -550,6 +554,7 @@ static void PM_WaterMove( void )
 	}
 
 	PM_Accelerate (wishdir, wishspeed, pm_wateraccelerate);
+	PM_OAXZoneCurrent();
 
 	// make sure we can go up slopes easily under water
 	if ( pml.groundPlane && DotProduct( pm->ps->velocity, pml.groundTrace.plane.normal ) < 0 ) {
@@ -668,6 +673,7 @@ static void PM_AirMove( void )
 
 	// not on ground, so little effect on velocity
 	PM_Accelerate (wishdir, wishspeed, pm_airaccelerate);
+	PM_OAXZoneCurrent();
 
 	// we may have a ground plane that is very steep, even
 	// though we don't have a groundentity
@@ -2108,6 +2114,9 @@ void PmoveSingle (pmove_t *pmove)
 		return;		// no movement at all
 	}
 
+	// oax zone volumes: gravity, current, friction for this step
+	PM_OAXZoneBegin();
+
 	// set watertype, and waterlevel
 	PM_SetWaterLevel();
 	pml.previous_waterlevel = pmove->waterlevel;
@@ -2182,6 +2191,8 @@ void PmoveSingle (pmove_t *pmove)
 	//But only if pmove_float is not enabled. We always snap on slick surfaces to prevent acceleration.
 	if(!(pm->pmove_float) || pml.groundTrace.surfaceFlags & SURF_SLICK)
 		trap_SnapVector( pm->ps->velocity );
+
+	PM_OAXZoneEnd();
 }
 
 
