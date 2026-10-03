@@ -237,6 +237,10 @@ typedef struct {
 	// oax zone volumes (bg_oax_zone.h): the zone slot containing a point, or
 	// -1; left NULL on maps without zones, which keeps stock movement
 	int			(*oaxZoneAt)( const vec3_t point );
+
+	// oax: 1 = the stock walk-move landing bounce (PM_OAXIntoGround off);
+	// only for the control of a test (game cvar g_oaxLandFix 0)
+	int			oaxStockLanding;
 } pmove_t;
 
 // if a full pmove isn't done on the client, you can just update the angles

@@ -883,7 +883,8 @@ void ClearRegisteredItems( void )
 			RegisterItem( BG_FindItemForWeapon( WP_CHAINGUN ) );
 		}
 	}
-	if (g_grapple.integer) {
+	if (g_grapple.integer || trap_Cvar_VariableIntegerValue( "g_oaxTranslocator" )) {
+		// oax: the translocator rule uses the hook's slot (g_oax_translocator.c)
 		RegisterItem( BG_FindItemForWeapon( WP_GRAPPLING_HOOK ) );
 	}
 	if( g_gametype.integer == GT_HARVESTER ) {

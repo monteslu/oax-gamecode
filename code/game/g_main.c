@@ -64,6 +64,7 @@ vmCvar_t g_forcerespawn;
 vmCvar_t g_respawntime;
 vmCvar_t g_inactivity;
 vmCvar_t g_debugMove;
+vmCvar_t g_oaxLandFix;
 vmCvar_t g_debugDamage;
 vmCvar_t g_debugAlloc;
 vmCvar_t g_weaponRespawn;
@@ -256,6 +257,7 @@ static cvarTable_t gameCvarTable[] = {
 	{ &g_respawntime, "g_respawntime", "0", CVAR_ARCHIVE, 0, qtrue },
 	{ &g_inactivity, "g_inactivity", "0", 0, 0, qtrue },
 	{ &g_debugMove, "g_debugMove", "0", 0, 0, qfalse },
+	{ &g_oaxLandFix, "g_oaxLandFix", "1", CVAR_CHEAT, 0, qfalse },	// oax: 0 restores the stock landing bounce (test control)
 	{ &g_debugDamage, "g_debugDamage", "0", 0, 0, qfalse },
 	{ &g_debugAlloc, "g_debugAlloc", "0", 0, 0, qfalse },
 	{ &g_motd, "g_motd", "", 0, 0, qfalse },

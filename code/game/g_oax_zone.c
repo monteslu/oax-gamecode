@@ -1,5 +1,25 @@
 /*
 ===========================================================================
+oax game code
+Copyright (C) 2026 Luis Montes
+
+This file is part of the oax game code, a fork of OpenArena's gamecode.
+It is free software; you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation; either version 2 of the License, or (at your option) any later
+version. The combined game code is distributed under GPLv3.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+===========================================================================
+*/
+/*
+===========================================================================
 g_oax_zone.c: zone volumes, game side.
 
 func_oax_zone is a brush entity that is never solid and never sent to
@@ -20,17 +40,29 @@ Keys:
   reverb_gain      wet level 0..1
   priority         where zones overlap the highest wins (then lowest entity)
   damage           points per second to players inside
+  ladder           a ladder volume: climb speed in ups (bg_oax_zone.c)
+  name             a location name: players inside report it (team overlay,
+                   say_team #l) ahead of any target_location
+  color            0-7, the name's color, as target_location's count
+  ambient          "r g b": the zone's ambient light (renderer only, unified
+                   lighting maps; see docs/lights.md in the engine)
   targetname       using the zone toggles it; spawnflag 1 starts it off
 ===========================================================================
 */
 #include "g_local.h"
 #include "bg_oax_zone.h"
 #include "g_oax_sim.h"
+#include "g_oax_nav.h"
 
 static gentity_t *zoneEnts[MAX_OAX_ZONES];
 static char       zoneInfo[MAX_OAX_ZONES][MAX_INFO_STRING];
 static int        numZoneEnts;
 static int        zoneDamageTime[MAX_CLIENTS];
+
+/* zone names as locations: CS_LOCATIONS from the top down (MAX_LOCATIONS - 1
+   - slot), so target_location's linkup, which counts up from 1, never meets
+   them; the proxies carry what Team_GetLocation's callers read */
+static gentity_t  zoneLocations[MAX_OAX_ZONES];
 
 /* published per frame for tests: the first client's zone and its changes */
 static int        zoneLast = -2;
@@ -51,6 +83,7 @@ static const char *zoneKeys[][2] = {
 	{ "reverb_gain", "rg" },
 	{ "priority", "p" },
 	{ "damage", "d" },
+	{ "ladder", "l" },
 	{ "origin", "o" },
 	{ NULL, NULL }
 };
@@ -75,6 +108,8 @@ void SP_func_oax_zone( gentity_t *ent ) {
 	char *info;
 	char *v;
 	int   i, slot;
+
+	G_OAXNavSpawnCost( ent );	/* "navcost" of a damage zone (g_oax_navlinks.c) */
 
 	if ( numZoneEnts >= MAX_OAX_ZONES ) {
 		G_Printf( "func_oax_zone: more than %i zones, ignored\n", MAX_OAX_ZONES );
@@ -115,6 +150,13 @@ void SP_func_oax_zone( gentity_t *ent ) {
 			Info_SetValueForKey( info, zoneKeys[i][1], v );
 		}
 	}
+	memset( &zoneLocations[slot], 0, sizeof( zoneLocations[slot] ) );
+	if ( G_SpawnString( "name", "", &v ) && v[0] && MAX_LOCATIONS - 1 - slot > 0 ) {
+		zoneLocations[slot].message = G_NewString( v );
+		zoneLocations[slot].health = MAX_LOCATIONS - 1 - slot;
+		G_SpawnInt( "color", "0", &zoneLocations[slot].count );
+		trap_SetConfigstring( CS_LOCATIONS + zoneLocations[slot].health, zoneLocations[slot].message );
+	}
 	G_OAXZoneSend( slot );
 }
 
@@ -126,6 +168,26 @@ static int G_OAXZoneContact( const bgOAXZone_t *z, const vec3_t point ) {
 
 static int G_OAXZoneAt( const vec3_t point ) {
 	return BG_OAXZoneAtPoint( point, G_OAXZoneContact );
+}
+
+/*
+=================
+G_OAXZoneLocation
+
+The named zone ent stands in (Team_GetLocation asks first), or NULL.
+=================
+*/
+gentity_t *G_OAXZoneLocation( gentity_t *ent ) {
+	int zone;
+
+	if ( !bg_oaxNumZones || !ent ) {
+		return NULL;
+	}
+	zone = G_OAXZoneAt( ent->r.currentOrigin );
+	if ( zone < 0 || !zoneLocations[zone].health ) {
+		return NULL;
+	}
+	return &zoneLocations[zone];
 }
 
 void G_OAXZonePmove( pmove_t *pm ) {
@@ -161,12 +223,18 @@ void G_OAXZoneFrame( void ) {
 			first = 0;
 			if ( zone != zoneLast ) {
 				zoneLast = zone;
-				if ( strlen( zoneLog ) < 66 ) {   /* debug values hold 79 chars */
+				if ( strlen( zoneLog ) < 66 ) {   /* the first transitions only, within zoneLog[96] */
 					Q_strcat( zoneLog, sizeof( zoneLog ), va( "%i:%i ", ent->client->ps.commandTime, zone ) );
 				}
 				BG_OAXDebugSet( "g_zone_log", zoneLog );
 			}
 			BG_OAXDebugSetInt( "g_zone", zone );
+			{
+				/* the location a team message would name, for tests */
+				char loc[64];
+
+				BG_OAXDebugSet( "g_location", Team_GetLocationMsg( ent, loc, sizeof( loc ) ) ? loc : "none" );
+			}
 		}
 		if ( zone >= 0 && bg_oaxZones[zone].damage > 0 && ent->health > 0 &&
 		     ent->client->ps.pm_type == PM_NORMAL && level.time >= zoneDamageTime[i] ) {

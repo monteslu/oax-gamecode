@@ -6,7 +6,7 @@ GPL source release:
 - Source: https://github.com/id-Software/DOOM-3
 - Copyright (C) 1999-2011 id Software LLC, a ZeniMax Media company.
 - License: GNU General Public License version 3 (COPYING-GPLv3.txt), with the additional terms in
-  DOOM-3's README.txt.
+  DOOM3-ADDITIONAL-TERMS.txt (quoted from DOOM-3's COPYING.txt).
 
 The OpenArena gamecode is licensed "GPL version 2 or (at your
 option) any later version", so they combine with GPLv3 code; once id Tech 4
@@ -25,7 +25,7 @@ No Doom 3 game data (maps, models, textures, sounds) is used, only code.
 
 ## Files
 
-| Engine file | From DOOM-3 | Changes |
+| File | From DOOM-3 | Changes |
 | --- | --- | --- |
 | code/game/g_oax_gui.c | neo/game/Player.cpp (idPlayer::UpdateFocus), neo/game/Entity.cpp (idEntity::HandleGuiCommands) | C89 for the QVM; Q3 world and GUI-surface traces; BUTTON_ATTACK is the click; Q3 targets; state via CS_OAX_GUISTATE |
 | code/game/bg_oax_traj.h, code/game/bg_oax_traj.c | neo/idlib/math/Extrapolate.h, neo/idlib/math/Interpolate.h, neo/game/physics/Physics_Parametric.cpp | C++ templates to C89 for the QVM; accel/decel phases in closed form from relative ms; parameters packed into a Q3 trajectory_t; spline path via the arc-length table |

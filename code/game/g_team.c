@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 
 #include "g_local.h"
+#include "g_oax_sim.h"
 
 
 typedef struct teamgame_s {
@@ -1517,6 +1518,12 @@ gentity_t *Team_GetLocation(gentity_t *ent)
 	gentity_t		*eloc, *best;
 	float			bestlen, len;
 	vec3_t			origin;
+
+	/* oax: a named zone the player is in wins (g_oax_zone.c) */
+	best = G_OAXZoneLocation( ent );
+	if ( best ) {
+		return best;
+	}
 
 	best = NULL;
 	bestlen = 3*8192.0*8192.0;

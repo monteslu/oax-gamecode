@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 //
 #include "g_local.h"
+#include "g_oax_nav.h"
 #include "g_oax_sim.h"
 
 
@@ -302,6 +303,11 @@ void trigger_teleporter_touch (gentity_t *self, gentity_t *other, trace_t *trace
 	}
 
 
+	// oax: a noretrigger teleporter does not send on a player who arrived in it
+	if ( G_OAXTeleportLocked( self, other ) ) {
+		return;
+	}
+
 	dest = 	G_PickTarget( self->target );
 	if (!dest) {
 		G_Printf ("Couldn't find teleporter destination\n");
@@ -316,13 +322,23 @@ void trigger_teleporter_touch (gentity_t *self, gentity_t *other, trace_t *trace
 Allows client side prediction of teleportation events.
 Must point at a target_position, which will be the teleport destination.
 
+oax: "noretrigger" 1: a player who arrives inside this trigger by teleport is
+not sent on until he has left it (g_oax_teleport.c).
+
 If spectator is set, only spectators can use this teleport
 Spectator teleporters are not normally placed in the editor, but are created
 automatically near doors to allow spectators to move through them
 */
 void SP_trigger_teleport( gentity_t *self )
 {
+	int noRetrigger;
+
 	InitTrigger (self);
+
+	G_SpawnInt( "noretrigger", "0", &noRetrigger );
+	if ( noRetrigger ) {
+		self->s.generic1 |= OAX_TELE_NORETRIGGER;
+	}
 
 	// unlike other triggers, we need to send this one to the client
 	// unless is a spectator trigger
@@ -415,6 +431,8 @@ void SP_trigger_hurt( gentity_t *self )
 
 	self->noise_index = G_SoundIndex( "sound/world/electro.wav" );
 	self->touch = hurt_touch;
+	// oax: "navcost" for the navmesh (g_oax_navlinks.c)
+	G_OAXNavSpawnCost( self );
 
 	if ( !self->damage ) {
 		self->damage = 5;

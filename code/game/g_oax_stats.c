@@ -1,5 +1,25 @@
 /*
 ===========================================================================
+oax game code
+Copyright (C) 2026 Luis Montes
+
+This file is part of the oax game code, a fork of OpenArena's gamecode.
+It is free software; you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation; either version 2 of the License, or (at your option) any later
+version. The combined game code is distributed under GPLv3.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+===========================================================================
+*/
+/*
+===========================================================================
 g_oax_stats.c: match statistics for map validation.
 
 Which item entities (pickups and flags) a living player has touched, and
@@ -147,7 +167,9 @@ static void G_OAXNavRoutes( void ) {
 		onMesh = trap_OAX_NavNearest( o, ext, near );
 		for ( j = 0; j < numSpawns && onMesh && !ok; j++ ) {
 			int flags = 0;
-			ok = trap_OAX_NavFindPath( spawnOrigin[j], o, pts, 64, &flags ) > 0 && !( flags & OAX_NAV_PATH_PARTIAL );
+			int links[64];
+			ok = trap_OAX_NavFindPathEx( spawnOrigin[j], o, pts, links, 64, &flags, G_OAXNavInclude(), 0 ) > 0 &&
+				!( flags & OAX_NAV_PATH_PARTIAL );
 		}
 		if ( ok ) {
 			routable++;

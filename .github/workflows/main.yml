@@ -1,12 +1,21 @@
 name: Build
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
-      - name: Build it
+        uses: actions/checkout@v4
+      - name: Build the QVMs
         run: make
+      - name: Upload the QVMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: oax-qvms-${{ matrix.os }}
+          path: build/release-*/oax/vm/*.qvm

@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 //
 #include "g_local.h"
+#include "g_oax_nav.h"
 
 // g_client.c -- client functions that don't happen every frame
 
@@ -1897,6 +1898,8 @@ void ClientSpawn(gentity_t *ent) {
 	if (g_grapple.integer) {
 		client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_GRAPPLING_HOOK );
 	}
+	// oax: the translocator rule (g_oax_translocator.c)
+	G_OAXTranslocatorSpawn( ent );
 
 	G_SetOrigin( ent, spawn_origin );
 	VectorCopy( spawn_origin, client->ps.origin );

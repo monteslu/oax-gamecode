@@ -7,14 +7,29 @@
 BUILD_STANDALONE=1
 BUILD_CLIENT=0
 BUILD_SERVER=0
-BUILD_GAME_SO=1
+# oax: a plain `make` builds only the base game QVMs (what the engine
+# loads). Pass BUILD_GAME_SO=1 for the native .so/.dylib modules and
+# BUILD_MISSIONPACK=1 for the missionpack build.
+BUILD_GAME_SO=0
 BUILD_GAME_QVM=1
 BUILD_BASEGAME=1
-BUILD_MISSIONPACK=1
+BUILD_MISSIONPACK=0
 #ifndef BASEGAME
 BASEGAME=oax
 #endif
 VERSION=1.36+0.8.8
+
+# oax: lcc and lburg are K&R-era C. Newer compilers default to C23 (gcc 15:
+# `constexpr` is a keyword) or reject implicit declarations (clang, gcc 14+),
+# so build the QVM tools as gnu89.
+TOOLS_CFLAGS += -std=gnu89
+
+# oax: on macOS `uname -p` reports i386 on Intel Macs, which selected the
+# 32-bit x86 flags (-arch i386, no SDK for it). Use the machine name
+# instead: x86_64 or arm64.
+ifeq ($(COMPILE_PLATFORM),darwin)
+  COMPILE_ARCH=$(shell uname -m)
+endif
 
 # OpenArena doesn't use opus yet
 

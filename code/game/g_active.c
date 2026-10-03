@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 
 #include "g_local.h"
+#include "g_oax_nav.h"
 #include "g_oax_sim.h"
 #include "g_oax_vehicle.h"
 
@@ -1054,6 +1055,7 @@ void ClientThink_real( gentity_t *ent ) {
 	pm.trace = trap_Trace;
 	pm.pointcontents = trap_PointContents;
 	pm.debugLevel = g_debugMove.integer;
+	pm.oaxStockLanding = !g_oaxLandFix.integer;	// oax: test control only
 	pm.noFootsteps = ( g_dmflags.integer & DF_NO_FOOTSTEPS ) > 0;
 
 	pm.pmove_fixed = pmove_fixed.integer | client->pers.pmoveFixed;
@@ -1118,6 +1120,8 @@ void ClientThink_real( gentity_t *ent ) {
 
 	// link entity now, after any personal teleporters have been used
 	trap_LinkEntity (ent);
+	// oax: release noretrigger teleporter locks the player has left (g_oax_teleport.c)
+	G_OAXTeleportLockFrame( ent );
 	if ( !ent->client->noclip ) {
 		G_TouchTriggers( ent );
 	}

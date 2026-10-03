@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // perform the server side effects of a weapon firing
 
 #include "g_local.h"
+#include "g_oax_nav.h"
 
 static	float	s_quadFactor;
 static	vec3_t	forward, right, up;
@@ -992,7 +993,10 @@ void FireWeapon( gentity_t *ent )
 		BFG_Fire( ent );
 		break;
 	case WP_GRAPPLING_HOOK:
-		Weapon_GrapplingHook_Fire( ent );
+		// oax: the translocator rule takes the hook's slot (g_oax_translocator.c)
+		if ( !G_OAXTranslocatorFire( ent, muzzle, forward ) ) {
+			Weapon_GrapplingHook_Fire( ent );
+		}
 		break;
 	case WP_NAILGUN:
 		Weapon_Nailgun_Fire( ent );

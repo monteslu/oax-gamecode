@@ -1,15 +1,35 @@
 /*
 ===========================================================================
+oax game code
+Copyright (C) 2026 Luis Montes
+
+This file is part of the oax game code, a fork of OpenArena's gamecode.
+It is free software; you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation; either version 2 of the License, or (at your option) any later
+version. The combined game code is distributed under GPLv3.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+===========================================================================
+*/
+/*
+===========================================================================
 g_oax_phys.c: server-side (authoritative) physics.
 
 G_PhysWorld() is the level's authoritative Box3D world, made on first use
 (nothing is created on a level that never asks, so stock play is
 untouched): the map's solid and player-clip brushes plus its patches as
 static collision, the level's gravity, 16 ms ticks. G_OAXPhysFrame steps
-it by the server frame time. Vehicles (phase 8) build on this.
+it by the server frame time. Vehicles build on this.
 
 `physscene <tag> <workers> <ticks> [perturb]` (server console) runs the
-phase 6 determinism scene in a world of its own: box stacks, a few hundred
+physics determinism scene in a world of its own: box stacks, a few hundred
 debris bodies of every shape, ragdolls, a jointed bridge, a wheeled cart,
 a piston, ropes, welds, a kinematic sweeper, explosions and ray batches,
 stepped tick by tick with the per-tick world hash recorded. Results are

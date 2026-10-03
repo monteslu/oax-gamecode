@@ -1,9 +1,30 @@
 /*
 ===========================================================================
+oax game code
+Copyright (C) 2026 Luis Montes
+
+This file is part of the oax game code, a fork of OpenArena's gamecode.
+It is free software; you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation; either version 2 of the License, or (at your option) any later
+version. The combined game code is distributed under GPLv3.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+===========================================================================
+*/
+/*
+===========================================================================
 bg_oax_vehicle.h: vehicle types and the helpers the game and the cgame
-share (bg_oax_vehicle.c). Phase 8: vehicles simulated on the server in the
-engine's Box3D world (oa-engine code/physics/phys_vehicle.c, syscalls
-1260-1269, token "physics_vehicle").
+share (bg_oax_vehicle.c). Vehicles are simulated on the server in the
+engine's Box3D world (syscalls 1260-1269, token "physics_vehicle"; see
+code/physics/phys_vehicle.c in the oax engine,
+github.com/monteslu/oax-engine).
 
 Body space: x forward, y left, z up, the origin at the chassis center
 (the same axes as AnglesToAxis).

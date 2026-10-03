@@ -2062,6 +2062,7 @@ void	trap_R_GetViewPosition( vec3_t point );
 void CG_OAXInit( void );
 void CG_OAXFrame( void );
 void CG_OAXConfigString( int num );
+int CG_OAXTime( void );
 
 /* cg_oax_gui.c: in-world GUIs */
 void CG_OAXGuiInit( void );
@@ -2085,8 +2086,8 @@ void CG_OAXVehicleHUD( void );
 int CG_OAXVehicleClipModel( centity_t *cent, clipHandle_t *cmodel, vec3_t origin );
 qboolean CG_OAXVehicleRider( int num, int fromTime, int toTime, const vec3_t in, vec3_t out );
 void trap_OAX_R_SetLightStyle( int style, float r, float g, float b );
-void trap_OAX_R_SetViewFog( const float *rgb, float density, float start, float end );
-/* cg_oax_fx.c: particles, projected decals, trails (phase 6) */
+void trap_OAX_R_SetViewFog( const vec3_t rgb, float density, float start, float end );
+/* cg_oax_fx.c: particles, projected decals, trails */
 void CG_OAXFxInit( void );
 void CG_OAXFxFrame( void );
 void CG_OAXEmitter( centity_t *cent );

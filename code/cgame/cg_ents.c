@@ -260,7 +260,7 @@ static void CG_Item( centity_t *cent ) {
 
 	// items bob up and down continuously
 	scale = 0.005 + cent->currentState.number * 0.00001;
-	cent->lerpOrigin[2] += 4 + cos( ( cg.time + 1000 ) *  scale ) * 4;
+	cent->lerpOrigin[2] += 4 + cos( ( CG_OAXTime() + 1000 ) *  scale ) * 4;
 
 	memset (&ent, 0, sizeof(ent));
 
@@ -832,8 +832,14 @@ static void CG_CalcEntityLerpPositions( centity_t *cent ) {
 	// just use the current frame and evaluate as best we can
 //	BG_EvaluateTrajectory( &cent->currentState.pos, cg.time, cent->lerpOrigin );
 //	BG_EvaluateTrajectory( &cent->currentState.apos, cg.time, cent->lerpAngles );
+	// oax: movers are drawn at the frozen time under cl_oaxFreezeTime
+	if ( cent->currentState.eType == ET_MOVER ) {
+		BG_EvaluateTrajectory( &cent->currentState.pos, CG_OAXTime(), cent->lerpOrigin );
+		BG_EvaluateTrajectory( &cent->currentState.apos, CG_OAXTime(), cent->lerpAngles );
+	} else {
 	BG_EvaluateTrajectory( &cent->currentState.pos, cg.time + timeshift, cent->lerpOrigin );
 	BG_EvaluateTrajectory( &cent->currentState.apos, cg.time + timeshift, cent->lerpAngles );
+	}
 
 	// if there's a time shift
 	if ( timeshift != 0 ) {
@@ -1107,11 +1113,11 @@ void CG_AddPacketEntities( void ) {
 
 	// the auto-rotating items will all have the same axis
 	cg.autoAngles[0] = 0;
-	cg.autoAngles[1] = ( cg.time & 2047 ) * 360 / 2048.0;
+	cg.autoAngles[1] = ( CG_OAXTime() & 2047 ) * 360 / 2048.0;	// oax: frozen by cl_oaxFreezeTime
 	cg.autoAngles[2] = 0;
 
 	cg.autoAnglesFast[0] = 0;
-	cg.autoAnglesFast[1] = ( cg.time & 1023 ) * 360 / 1024.0f;
+	cg.autoAnglesFast[1] = ( CG_OAXTime() & 1023 ) * 360 / 1024.0f;
 	cg.autoAnglesFast[2] = 0;
 
 	AnglesToAxis( cg.autoAngles, cg.autoAxis );

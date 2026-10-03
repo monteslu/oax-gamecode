@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // g_misc.c
 
 #include "g_local.h"
+#include "g_oax_nav.h"
 
 
 /*QUAKED func_group (0 0 0) ?
@@ -135,6 +136,9 @@ void TeleportPlayer( gentity_t *player, vec3_t origin, vec3_t angles ) {
 	if ( player->client->sess.sessionTeam != TEAM_SPECTATOR && player->client->ps.pm_type != PM_SPECTATOR ) {
 		trap_LinkEntity (player);
 	}
+
+	// oax: lock the noretrigger teleporters the player arrived in (g_oax_teleport.c)
+	G_OAXTeleportArrived( player );
 }
 
 

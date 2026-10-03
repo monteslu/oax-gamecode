@@ -2226,8 +2226,26 @@ void Cmd_SetViewpos_f( gentity_t *ent ) {
 		trap_SendServerCommand( ent-g_entities, va("print \"Cheats are not enabled on this server.\n\""));
 		return;
 	}
+	// oax: "setviewpos x y z yaw pitch [roll]" places exactly (g_oax_place.c)
+	if ( trap_Argc() == 6 || trap_Argc() == 7 ) {
+		for ( i = 0 ; i < 3 ; i++ ) {
+			trap_Argv( i + 1, buffer, sizeof( buffer ) );
+			origin[i] = atof( buffer );
+		}
+		VectorClear( angles );
+		trap_Argv( 4, buffer, sizeof( buffer ) );
+		angles[YAW] = atof( buffer );
+		trap_Argv( 5, buffer, sizeof( buffer ) );
+		angles[PITCH] = atof( buffer );
+		if ( trap_Argc() == 7 ) {
+			trap_Argv( 6, buffer, sizeof( buffer ) );
+			angles[ROLL] = atof( buffer );
+		}
+		G_OAXPlaceExact( ent, origin, angles );
+		return;
+	}
 	if ( trap_Argc() != 5 ) {
-		trap_SendServerCommand( ent-g_entities, va("print \"usage: setviewpos x y z yaw\n\""));
+		trap_SendServerCommand( ent-g_entities, va("print \"usage: setviewpos x y z yaw [pitch [roll]]\n\""));
 		return;
 	}
 

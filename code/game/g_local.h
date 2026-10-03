@@ -1056,7 +1056,8 @@ extern vmCvar_t g_quadfactor;
 extern vmCvar_t g_forcerespawn;
 extern vmCvar_t g_respawntime;
 extern vmCvar_t g_inactivity;
-extern vmCvar_t g_debugMove;
+extern	vmCvar_t	g_debugMove;
+extern	vmCvar_t	g_oaxLandFix;
 extern vmCvar_t g_debugAlloc;
 extern vmCvar_t g_debugDamage;
 extern vmCvar_t g_weaponRespawn;
@@ -1437,6 +1438,9 @@ void G_OAXInit( int levelTime, int randomSeed, int restart );
 void G_OAXRunFrame( int levelTime );
 void G_OAXRunFrameEnd( int levelTime );
 void G_OAXShutdown( int restart );
+void G_OAXPlaceExact( gentity_t *ent, const vec3_t origin, const vec3_t angles );	/* g_oax_place.c */
+void G_OAXPlaceFrame( void );
+void G_OAXPlaceInit( void );
 void trap_OAX_DebugSet( const char *name, const char *value );
 int trap_OAX_BSPXRead( const char *lump, void *buf, int size );
 

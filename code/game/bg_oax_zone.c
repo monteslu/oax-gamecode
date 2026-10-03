@@ -1,5 +1,25 @@
 /*
 ===========================================================================
+oax game code
+Copyright (C) 2026 Luis Montes
+
+This file is part of the oax game code, a fork of OpenArena's gamecode.
+It is free software; you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation; either version 2 of the License, or (at your option) any later
+version. The combined game code is distributed under GPLv3.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+===========================================================================
+*/
+/*
+===========================================================================
 bg_oax_zone.c: zone volumes, shared by game and cgame (see bg_oax_zone.h).
 ===========================================================================
 */
@@ -103,6 +123,7 @@ void BG_OAXZoneParse( int slot, const char *info ) {
 		z->reverbGain = BG_OAXZoneFloat( info, "rg", 0.0f );
 
 		z->damage = atoi( Info_ValueForKey( info, "d" ) );
+		z->ladder = BG_OAXZoneFloat( info, "l", 0.0f );
 	}
 
 	bg_oaxNumZones = 0;
@@ -241,4 +262,62 @@ float PM_OAXZoneFriction( void ) {
 		return 1.0f;
 	}
 	return bg_oaxZones[pml.oaxZone - 1].frictionScale;
+}
+
+/*
+=================
+PM_OAXLadder / PM_OAXLadderMove
+
+A zone with "ladder <speed>" is a ladder volume (navigation): inside
+it there is no gravity, forward climbs (down when looking more than 45
+degrees down), jump climbs and crouch descends, and sideways input moves
+along the ladder at half the climb speed. The velocity is set, not
+accelerated, the way ladders feel in most engines; leaving the top of the
+volume hands the player back to normal movement with the climb speed still
+up, so walking forward steps off onto the ledge.
+=================
+*/
+int PM_OAXLadder( void ) {
+	if ( !pml.oaxZone || pm->ps->pm_type != PM_NORMAL ) {
+		return 0;
+	}
+	return bg_oaxZones[pml.oaxZone - 1].ladder > 0.0f;
+}
+
+void PM_OAXLadderMove( void ) {
+	const bgOAXZone_t *z = &bg_oaxZones[pml.oaxZone - 1];
+	vec3_t             fwd, right;
+	float              speed = z->ladder, climb, pitch, len;
+	int                i;
+
+	VectorCopy( pml.forward, fwd );
+	VectorCopy( pml.right, right );
+	fwd[2] = 0;
+	right[2] = 0;
+	VectorNormalize( fwd );
+	VectorNormalize( right );
+	for ( i = 0; i < 2; i++ ) {
+		pm->ps->velocity[i] = ( fwd[i] * pm->cmd.forwardmove + right[i] * pm->cmd.rightmove ) * ( 0.5f * speed / 127.0f );
+	}
+	len = sqrt( pm->ps->velocity[0] * pm->ps->velocity[0] + pm->ps->velocity[1] * pm->ps->velocity[1] );
+	if ( len > 0.5f * speed ) {
+		pm->ps->velocity[0] *= 0.5f * speed / len;
+		pm->ps->velocity[1] *= 0.5f * speed / len;
+	}
+	pitch = AngleNormalize180( pm->ps->viewangles[PITCH] );
+	climb = speed * pm->cmd.forwardmove / 127.0f;
+	if ( pitch > 45.0f ) {
+		climb = -climb;
+	}
+	climb += speed * pm->cmd.upmove / 127.0f;
+	if ( climb > speed ) {
+		climb = speed;
+	} else if ( climb < -speed ) {
+		climb = -speed;
+	}
+	pm->ps->velocity[2] = climb;
+	pm->ps->groundEntityNum = ENTITYNUM_NONE;
+	pml.groundPlane = qfalse;
+	pml.walking = qfalse;
+	PM_StepSlideMove( qfalse );
 }

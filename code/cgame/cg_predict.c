@@ -422,7 +422,10 @@ static void CG_TouchTriggerPrediction( void ) {
 		}
 
 		if ( ent->eType == ET_TELEPORT_TRIGGER ) {
-			cg.hyperspace = qtrue;
+			// oax: a noretrigger teleporter is often stood in on arrival (g_oax_teleport.c)
+			if ( !( ent->generic1 & 1 ) ) {
+				cg.hyperspace = qtrue;
+			}
 		} else if ( ent->eType == ET_PUSH_TRIGGER ) {
 			BG_TouchJumpPad( &cg.predictedPlayerState, ent );
 		}

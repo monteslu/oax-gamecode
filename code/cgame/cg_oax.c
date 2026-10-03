@@ -1,5 +1,25 @@
 /*
 ===========================================================================
+oax game code
+Copyright (C) 2026 Luis Montes
+
+This file is part of the oax game code, a fork of OpenArena's gamecode.
+It is free software; you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation; either version 2 of the License, or (at your option) any later
+version. The combined game code is distributed under GPLv3.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+===========================================================================
+*/
+/*
+===========================================================================
 cg_oax.c: entry points for the oax map features in the cgame module.
 
 CG_Init and CG_DrawActiveFrame call these; every feature hooks in here
@@ -30,7 +50,32 @@ static void CG_OAXSplines( void ) {
 	}
 }
 
+/*
+=================
+CG_OAXTime
+
+The time animated things are drawn at: cg.time, or cl_oaxFreezeTime (ms,
+cheat, -1 = off) when the global freeze is on. The engine pins the
+renderer's scene clock with the same cvar; this pins the cgame's own
+clocks (sky portal, light styles, light trajectories, mover interpolation,
+item bob and spin). See docs/test-hooks.md in
+the oax engine (github.com/monteslu/oax-engine).
+=================
+*/
+static vmCvar_t cl_oaxFreezeTime;
+static int      freezeFrame = -1;
+
+int CG_OAXTime( void ) {
+	if ( freezeFrame != cg.clientFrame ) {
+		freezeFrame = cg.clientFrame;
+		trap_Cvar_Update( &cl_oaxFreezeTime );
+	}
+	return cl_oaxFreezeTime.integer >= 0 ? cl_oaxFreezeTime.integer : cg.time;
+}
+
 void CG_OAXInit( void ) {
+	trap_Cvar_Register( &cl_oaxFreezeTime, "cl_oaxFreezeTime", "-1", CVAR_CHEAT | CVAR_TEMP );
+	freezeFrame = -1;
 	BG_OAXDebugSet( "cg_oax", va( "%i", OAX_VERSION ) );
 	CG_OAXGuiInit();
 	memset( cgOaxSplineCS, 0, sizeof( cgOaxSplineCS ) );

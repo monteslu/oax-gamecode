@@ -1,8 +1,29 @@
 /*
 ===========================================================================
+oax game code
+Copyright (C) 2026 Luis Montes
+
+This file is part of the oax game code, a fork of OpenArena's gamecode.
+It is free software; you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation; either version 2 of the License, or (at your option) any later
+version. The combined game code is distributed under GPLv3.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+===========================================================================
+*/
+/*
+===========================================================================
 oax_public.h: the oax engine extensions as gamecode sees them.
 
-Mirrors oa-engine code/qcommon/oax.h: syscall numbers from 1000, which a
+Mirrors code/qcommon/oax.h in the oax engine
+(github.com/monteslu/oax-engine): syscall numbers from 1000, which a
 stock engine rejects, so every caller first checks BG_OAXFeature("<token>")
 against the engine's read-only cvar oax_features. Numbers never change once
 shipped; each feature owns a block.
@@ -16,7 +37,7 @@ shipped; each feature owns a block.
 /* game imports */
 #define G_OAX_DEBUG_SET     1000  /* ( const char *name, const char *value ) */
 #define G_OAX_BSPX_READ     1001  /* ( const char *lump, void *buf, int size ) -> length, -1 absent */
-#define G_OAX_SCRIPT_BASE   1010  /* 1010-1039 map scripting (oa-engine idscript/oax_script.h) */
+#define G_OAX_SCRIPT_BASE   1010  /* 1010-1039 map scripting (engine idscript/oax_script.h) */
 #define G_OAX_SCRIPT_INIT           1010  /* ( int randomSeed ) -> 1 */
 #define G_OAX_SCRIPT_REGISTER_EVENT 1011  /* ( name, argfmt, int ret, int flags ) -> event number, -1 */
 #define G_OAX_SCRIPT_COMPILE_FILE   1012  /* ( path ) -> 1 ok, 0 compile error, -1 missing */
@@ -45,6 +66,10 @@ shipped; each feature owns a block.
 #define G_OAX_NAV_FINDPATH      1091  /* ( start, goal, float *points, int maxPoints, int *flags ) -> points; flags & 1 partial */
 #define G_OAX_NAV_NEAREST       1092  /* ( point, halfExtents, vec3_t out ) -> 1 found */
 #define G_OAX_NAV_RANDOMPOINT   1093  /* ( int seed, vec3_t out ) -> 1 found */
+#define G_OAX_NAV_ADDLINK       1094  /* ( start, end, int kind, float radius, int bidir ) -> link index, -1 full */
+#define G_OAX_NAV_ADDAREA       1095  /* ( mins, maxs, float cost ) -> index; cost < 0 removes the surface */
+#define G_OAX_NAV_COMMIT        1096  /* ( void ) -> polygons: rebuild with the queued links and volumes */
+#define G_OAX_NAV_FINDPATHEX    1097  /* ( start, goal, float *points, int *links, int max, int *flags, int include, int exclude ) */
 #define G_OAX_ENT_BASE      1100  /* 1100-1109 entity collision, token "ent_obb" */
 #define G_OAX_ENT_SET_OBB       1100  /* ( int entnum, const float *obb or NULL ): the entity collides as an oriented box:
                                          center[3] (from r.currentOrigin), axis[3][3], halfExtents[3] */
@@ -57,7 +82,7 @@ shipped; each feature owns a block.
 #define CG_OAX_R_SETVIEWFOG    1012  /* ( const float *rgb, float density, float start, float end ) token "viewfog";
                                         density 0 = off; end > start: linear to `density` (0..1),
                                         else 1 - exp(-density * (dist - start)) */
-/* effects (phase 6), tokens "particles", "decals", "trails" (engine renderergl2 tr_oax_fx*.c) */
+/* effects, tokens "particles", "decals", "trails" (engine renderergl2 tr_oax_fx*.c) */
 #define CG_OAX_R_REGISTERFX    1013  /* ( const char *particleDecl ) -> handle, 0 if none */
 #define CG_OAX_R_ADDFX         1014  /* ( const oaxFx_t *fx ) -> 1 while alive or to come, 0 once done */
 #define CG_OAX_R_ADDDECAL      1015  /* ( const oaxDecal_t *decal ) -> polygons projected (0 none or off) */
@@ -124,8 +149,8 @@ shipped; each feature owns a block.
 /* what a refEntity carries beyond the stock layout (engine tr_types.h) */
 typedef struct {
 	int		guiHandle;			/* client GUI on the entity's "map $gui" stages, 0 = none */
-	float	shaderParms[12];	/* unified lighting (phase 5) */
-	int		lightDefMask;		/* unified lighting (phase 5) */
+	float	shaderParms[12];	/* unified lighting */
+	int		lightDefMask;		/* unified lighting */
 } refEntityExt_t;
 #define CG_OAX_CM_TEMP_OBB  1070  /* ( const float *obb, int contents ) -> clip handle, token "ent_obb": an oriented
                                      box (as G_OAX_ENT_SET_OBB) for trap_CM_TransformedBoxTrace at the entity

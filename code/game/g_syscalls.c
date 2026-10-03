@@ -854,6 +854,23 @@ int trap_OAX_NavRandomPoint( int seed, vec3_t out ) {
 	return syscall( G_OAX_NAV_RANDOMPOINT, seed, out );
 }
 
+int trap_OAX_NavAddLink( const vec3_t start, const vec3_t end, int kind, float radius, int bidir ) {
+	return syscall( G_OAX_NAV_ADDLINK, start, end, kind, PASSFLOAT( radius ), bidir );
+}
+
+int trap_OAX_NavAddArea( const vec3_t mins, const vec3_t maxs, float cost ) {
+	return syscall( G_OAX_NAV_ADDAREA, mins, maxs, PASSFLOAT( cost ) );
+}
+
+int trap_OAX_NavCommit( void ) {
+	return syscall( G_OAX_NAV_COMMIT );
+}
+
+int trap_OAX_NavFindPathEx( const vec3_t start, const vec3_t goal, float *points, int *links, int maxPoints, int *flags,
+	int include, int exclude ) {
+	return syscall( G_OAX_NAV_FINDPATHEX, start, goal, points, links, maxPoints, flags, include, exclude );
+}
+
 /* oriented entity boxes (g_oax_vehicle.c) */
 void trap_OAX_EntSetOBB( int entnum, const float *obb ) {
 	syscall( G_OAX_ENT_SET_OBB, entnum, obb );

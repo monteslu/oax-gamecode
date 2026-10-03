@@ -1,6 +1,26 @@
 /*
 ===========================================================================
-g_oax_vehicle.c: vehicles on the server (phase 8).
+oax game code
+Copyright (C) 2026 Luis Montes
+
+This file is part of the oax game code, a fork of OpenArena's gamecode.
+It is free software; you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation; either version 2 of the License, or (at your option) any later
+version. The combined game code is distributed under GPLv3.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+===========================================================================
+*/
+/*
+===========================================================================
+g_oax_vehicle.c: vehicles on the server.
 
 The game owns one authoritative Box3D world (the engine's physics module)
 with the map's brushes and heightmap terrain as static collision. Each
@@ -1081,6 +1101,7 @@ static gVehicle_t *G_VehOfNum( int num ) {
    vehWorldTime, the step, then everything that follows from it */
 static void G_VehTick( void ) {
 	oaxPhysBodyState_t bs;
+	trace_t tr;
 	int i, k, t0 = vehWorldTime;
 
 	for ( i = 0; i < VEH_MAX; i++ ) {
@@ -1163,7 +1184,10 @@ static void G_VehTick( void ) {
 		if ( v->state.origin[2] < vehMinZ ) {
 			vehMinZ = v->state.origin[2];
 		}
-		if ( trap_PointContents( v->state.origin, v->ent->s.number ) & CONTENTS_SOLID ) {
+		/* a point trace: trap_PointContents would count trigger brushes
+		   (compiled CONTENTS_SOLID) as solid */
+		trap_Trace( &tr, v->state.origin, NULL, NULL, v->state.origin, v->ent->s.number, CONTENTS_SOLID );
+		if ( tr.startsolid ) {
 			vehInSolid++;
 		}
 		G_VehHashState( v );

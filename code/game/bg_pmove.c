@@ -726,6 +726,25 @@ static void PM_GrappleMove( void )
 
 /*
 ===================
+PM_OAXIntoGround
+
+qtrue when the velocity goes into the ground plane (more than 1 unit/s)
+and has less than 1 unit/s along it.
+===================
+*/
+static qboolean PM_OAXIntoGround( const vec3_t v, const vec3_t normal ) {
+	float	into = DotProduct( v, normal );
+	vec3_t	along;
+
+	if ( into > -1.0f ) {
+		return qfalse;
+	}
+	VectorMA( v, -into, normal, along );
+	return VectorLength( along ) < 1.0f;
+}
+
+/*
+===================
 PM_WalkMove
 
 ===================
@@ -824,6 +843,16 @@ static void PM_WalkMove( void )
 	}
 
 	vel = VectorLength(pm->ps->velocity);
+
+	// oax: a velocity (almost) straight into the ground keeps no speed. A
+	// player that lands by the ground trace alone (ending a fall within
+	// 0.25 of a floor, no collision to clip the fall) arrives here with its
+	// whole fall speed into the plane; the clip leaves only the overclip
+	// residual along the normal, and the stock rescale below turned that
+	// into the full fall speed straight up: an endless bounce.
+	if ( !pm->oaxStockLanding && PM_OAXIntoGround( pm->ps->velocity, pml.groundTrace.plane.normal ) ) {
+		vel = 0;
+	}
 
 	// slide along the ground plane
 	PM_ClipVelocity (pm->ps->velocity, pml.groundTrace.plane.normal,
@@ -2157,6 +2186,10 @@ void PmoveSingle (pmove_t *pmove)
 		PM_GrappleMove();
 		// We can wiggle a bit
 		PM_AirMove();
+	}
+	else if ( PM_OAXLadder() ) {
+		// oax ladder volume (a func_oax_zone with "ladder")
+		PM_OAXLadderMove();
 	}
 	else if (pm->ps->pm_flags & PMF_TIME_WATERJUMP) {
 		PM_WaterJumpMove();

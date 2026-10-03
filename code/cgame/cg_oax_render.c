@@ -1,5 +1,25 @@
 /*
 ===========================================================================
+oax game code
+Copyright (C) 2026 Luis Montes
+
+This file is part of the oax game code, a fork of OpenArena's gamecode.
+It is free software; you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation; either version 2 of the License, or (at your option) any later
+version. The combined game code is distributed under GPLv3.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+===========================================================================
+*/
+/*
+===========================================================================
 cg_oax_render.c: the cgame side of the oax world-rendering features.
 
 - Sky portals (token "skyportal"): when the map has a misc_oax_skyportal
@@ -13,7 +33,8 @@ cg_oax_render.c: the cgame side of the oax world-rendering features.
   renderer.
 - View fog (token "viewfog"): cg_oaxViewFog "r g b density start end"
   (cheat) sets the fog through the same syscall the zone volumes use.
-- cg_oaxSkyPortalTime (cheat, ms, -1 = off) pins the sky rotation time.
+- cg_oaxSkyPortalTime (cheat, ms, -1 = off) pins the sky rotation time;
+  otherwise the global freeze (cl_oaxFreezeTime, CG_OAXTime) does.
 ===========================================================================
 */
 #include "cg_local.h"
@@ -107,7 +128,7 @@ static void CG_OAXDrawSkyPortal( void ) {
 	if ( cg_oaxSkyPortalTime.integer >= 0 ) {
 		t = ( cg_oaxSkyPortalTime.integer % 3600000 ) * 0.001f;
 	} else {
-		t = ( cg.time % 3600000 ) * 0.001f;
+		t = ( CG_OAXTime() % 3600000 ) * 0.001f;
 	}
 	for ( i = 0; i < 3; i++ ) {
 		angles[i] = AngleMod( skyPortal.rotate[i] * t );
@@ -166,7 +187,7 @@ static void CG_OAXUpdateLightStyles( void ) {
 		} else if ( !ls->len ) {
 			v = 1;
 		} else {
-			int c = ls->pattern[( cg.time / ( 1000 / ls->rate ) ) % ls->len];
+			int c = ls->pattern[( CG_OAXTime() / ( 1000 / ls->rate ) ) % ls->len];
 
 			if ( c < 'a' ) {
 				c = 'a';

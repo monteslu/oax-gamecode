@@ -526,7 +526,7 @@ void trap_Phys_R_AddSkeletalEntity( const refEntity_t *re, const float *mats, in
 	syscall( PHYS_R_ADD_SKELETAL_ENTITY, re, mats, numJoints );
 }
 int trap_Phys_R_ModelFrames( qhandle_t model ) { return syscall( PHYS_R_MODEL_FRAMES, model ); }
-/* effects (phase 6) */
+/* effects */
 int trap_OAX_R_RegisterFx( const char *name ) {
 	return syscall( CG_OAX_R_REGISTERFX, name );
 }

@@ -44,7 +44,7 @@ evaluates too, so movers predict; times are not snapped to physics frames;
 pushing uses the stock G_MoverPush / G_MoverTeam; threads are numbers handed
 to g_oaxMoverDone instead of idThread pointers; no save games.
 
-func_oax_mover is new (keyframes, not from DOOM-3):
+func_oax_mover is new (keyframe movers, not from DOOM-3):
 
   key1 .. key7         offsets from the spawn position ("x y z"); key0 is 0 0 0
   key1_angles ..       angle offsets ("pitch yaw roll") at those keys

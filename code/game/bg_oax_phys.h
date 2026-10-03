@@ -1,9 +1,30 @@
 /*
 ===========================================================================
+oax game code
+Copyright (C) 2026 Luis Montes
+
+This file is part of the oax game code, a fork of OpenArena's gamecode.
+It is free software; you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation; either version 2 of the License, or (at your option) any later
+version. The combined game code is distributed under GPLv3.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+===========================================================================
+*/
+/*
+===========================================================================
 bg_oax_phys.h: the physics syscalls as gamecode calls them, and helpers
 shared by the game and the cgame (bg_oax_phys.c).
 
-Engine side: oa-engine code/physics (Box3D worlds). ABI: oax_phys.h.
+Engine side: code/physics in the oax engine
+(github.com/monteslu/oax-engine), Box3D worlds. ABI: oax_phys.h.
 Every trap needs BG_OAXFeature("physics") first; the skeleton traps (cgame
 only) need "physics_skel".
 ===========================================================================

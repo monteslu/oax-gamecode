@@ -83,6 +83,8 @@ void PM_OAXZoneBegin( void );
 void PM_OAXZoneEnd( void );
 void PM_OAXZoneCurrent( void );
 float PM_OAXZoneFriction( void );
+int PM_OAXLadder( void );
+void PM_OAXLadderMove( void );
 void PM_AddEvent( int newEvent );
 
 qboolean	PM_SlideMove( qboolean gravity );

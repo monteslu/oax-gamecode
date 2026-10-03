@@ -240,6 +240,10 @@ equ trap_OAX_NavStatus					-1091
 equ trap_OAX_NavFindPath				-1092
 equ trap_OAX_NavNearest					-1093
 equ trap_OAX_NavRandomPoint				-1094
+equ trap_OAX_NavAddLink					-1095
+equ trap_OAX_NavAddArea					-1096
+equ trap_OAX_NavCommit					-1097
+equ trap_OAX_NavFindPathEx				-1098
 equ trap_OAX_EntSetOBB					-1101
 equ trap_OAX_ScriptInit					-1011
 equ trap_OAX_ScriptRegisterEvent		-1012
