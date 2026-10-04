@@ -326,149 +326,157 @@ static InitialVideoOptions_s s_ivo_templates[] =
 
 #define NUM_IVO_TEMPLATES ( sizeof( s_ivo_templates ) / sizeof( s_ivo_templates[0] ) )
 
-static const char *builtinResolutions[ ] =
-{
-	"320x240",
-	"400x300",
-	"512x384",
-	"640x480",
-	"800x600",
-	"960x720",
-	"1024x768",
-	"1152x864",
-	"1280x1024",
-	"1600x1200",
-	"2048x1536",
-	"856x480",
-	NULL
-};
-
-static const char *knownRatios[ ][2] =
-{
-        { "1.25:1", "5:4"   },
-        { "1.33:1", "4:3"   },
-        { "1.50:1", "3:2"   },
-        { "1.56:1", "14:9"  },
-        { "1.60:1", "16:10" },
-        { "1.67:1", "5:3"   },
-        { "1.78:1", "16:9"  },
-        { NULL    , NULL    }
-};
-
-#define MAX_RESOLUTIONS 32
-
-static const char* ratios[ MAX_RESOLUTIONS ];
-static char ratioBuf[ MAX_RESOLUTIONS ][ 8 ];
-static int ratioToRes[ MAX_RESOLUTIONS ];
-static int resToRatio[ MAX_RESOLUTIONS ];
-
-static char resbuf[ MAX_STRING_CHARS ];
-static const char* detectedResolutions[ MAX_RESOLUTIONS ];
-static char currentResolution[ 20 ];
-
-static const char** resolutions = builtinResolutions;
-static qboolean resolutionsDetected = qfalse;
-
 /*
-=================
-GraphicsOptions_FindBuiltinResolution
-=================
+Resolutions (oax): the display's modes (r_availableModes, from SDL) of at
+least 800x600, plus the window's current size, ordered by aspect ratio
+(widest first) and then by size. A choice applies as r_mode -1 with
+r_customwidth / r_customheight, so every listed size works, whatever the
+renderer's old mode table holds. Without a mode list (some platforms), a
+set of common modern sizes stands in.
 */
-static int GraphicsOptions_FindBuiltinResolution( int mode )
+#define MAX_RESOLUTIONS	96
+
+typedef struct {
+	int		w, h;
+	float	aspect;
+	char	name[16];
+} uiResolution_t;
+
+static uiResolution_t	resList[ MAX_RESOLUTIONS ];
+static int				numResolutions;
+static const char		*resolutions[ MAX_RESOLUTIONS + 1 ];
+
+static char				ratioNames[ MAX_RESOLUTIONS ][ 8 ];
+static const char		*ratios[ MAX_RESOLUTIONS + 1 ];
+static int				numRatios;
+static int				resToRatio[ MAX_RESOLUTIONS ];
+static int				ratioToRes[ MAX_RESOLUTIONS ];	// the largest size of that ratio
+
+static const struct { float aspect; const char *name; } knownRatios[ ] = {
+	{ 1.25f, "5:4" }, { 4.0f / 3.0f, "4:3" }, { 1.5f, "3:2" }, { 1.6f, "16:10" },
+	{ 5.0f / 3.0f, "5:3" }, { 16.0f / 9.0f, "16:9" }, { 64.0f / 27.0f, "21:9" }, { 3.2f, "32:10" },
+	{ 32.0f / 9.0f, "32:9" }
+};
+
+static const int fallbackResolutions[ ][ 2 ] = {
+	{ 1280, 720 }, { 1366, 768 }, { 1600, 900 }, { 1920, 1080 }, { 2560, 1440 }, { 3840, 2160 },
+	{ 1280, 800 }, { 1440, 900 }, { 1680, 1050 }, { 1920, 1200 }, { 2560, 1600 },
+	{ 1024, 768 }, { 1280, 960 }, { 1280, 1024 }, { 1600, 1200 }
+};
+
+static void GraphicsOptions_RatioName( float aspect, char *out, int size )
 {
 	int i;
 
-	if( !resolutionsDetected )
-		return mode;
-
-	if( mode < 0 )
-		return -1;
-
-	for( i = 0; builtinResolutions[ i ]; i++ )
-	{
-		if( Q_strequal( builtinResolutions[ i ], detectedResolutions[ mode ] ) )
-			return i;
+	for ( i = 0; i < ARRAY_LEN( knownRatios ); i++ ) {
+		if ( fabs( aspect - knownRatios[ i ].aspect ) < 0.02f ) {
+			Q_strncpyz( out, knownRatios[ i ].name, size );
+			return;
+		}
 	}
-
-	return -1;
+	Com_sprintf( out, size, "%.2f:1", aspect );
 }
 
-/*
-=================
-GraphicsOptions_FindDetectedResolution
-=================
-*/
-static int GraphicsOptions_FindDetectedResolution( int mode )
+static int GraphicsOptions_FindResolution( int w, int h )
 {
 	int i;
 
-	if( !resolutionsDetected )
-		return mode;
-
-	if( mode < 0 )
-		return -1;
-
-	for( i = 0; detectedResolutions[ i ]; i++ )
-	{
-		if( Q_strequal( builtinResolutions[ mode ], detectedResolutions[ i ] ) )
+	for ( i = 0; i < numResolutions; i++ ) {
+		if ( resList[ i ].w == w && resList[ i ].h == h )
 			return i;
 	}
-
 	return -1;
 }
 
-/*
-=================
-GraphicsOptions_GetAspectRatios
-=================
-*/
-static void GraphicsOptions_GetAspectRatios( void )
+static void GraphicsOptions_AddResolution( int w, int h, qboolean always )
 {
-    int i, r;
+	uiResolution_t *r;
 
-    // build ratio list from resolutions
-    for( r = 0; resolutions[r]; r++ )
-    {
-        int w, h;
-        char *x;
-        char str[ sizeof(ratioBuf[0]) ];
+	if ( w <= 0 || h <= 0 || numResolutions >= MAX_RESOLUTIONS )
+		return;
+	if ( !always && ( w < 800 || h < 600 ) )
+		return;
+	if ( GraphicsOptions_FindResolution( w, h ) >= 0 )
+		return;
+	r = &resList[ numResolutions++ ];
+	r->w = w;
+	r->h = h;
+	r->aspect = (float)w / (float)h;
+}
 
-        // calculate resolution's aspect ratio
-        x = strchr( resolutions[r], 'x' )+1;
-        
-        
-        Q_strncpyz( str, resolutions[r], x-resolutions[r] );
-        w = atoi( str );
-        h = atoi( x );
-        Com_sprintf( str, sizeof(str), "%.2f:1", (float)w / (float)h );
-        
-        // rename common ratios ("1.33:1" -> "4:3")
-        for( i = 0; knownRatios[i][0]; i++ ) {
-            if( Q_strequal( str, knownRatios[i][0] ) ) {
-                Q_strncpyz( str, knownRatios[i][1], sizeof( str ) );
-                break;
-            }
-        }
+static int GraphicsOptions_CompareResolutions( const void *a, const void *b )
+{
+	const uiResolution_t *ra = a, *rb = b;
+	char na[ 8 ], nb[ 8 ];
 
-        // add ratio to list if it is new
-        // establish res/ratio relationship
-        for( i = 0; ratioBuf[i][0]; i++ )
-        {
-            if( Q_strequal( str, ratioBuf[i] ) )
-                break;
-        }
-        if( !ratioBuf[i][0] )
-        {
-            Q_strncpyz( ratioBuf[i], str, sizeof(ratioBuf[i]) );
-            ratioToRes[i] = r;
-        }
-        ratios[r] = ratioBuf[r];
-        resToRatio[r] = i;
-    }
-    ratios[r] = NULL;
+	// same named ratio (1366x768 is 16:9 too): by size
+	GraphicsOptions_RatioName( ra->aspect, na, sizeof( na ) );
+	GraphicsOptions_RatioName( rb->aspect, nb, sizeof( nb ) );
+	if ( strcmp( na, nb ) && fabs( ra->aspect - rb->aspect ) > 0.001f )
+		return ra->aspect > rb->aspect ? -1 : 1;
+	return ra->w * ra->h - rb->w * rb->h;
 }
 
 /*
+=================
+GraphicsOptions_GetResolutions
+=================
+*/
+static void GraphicsOptions_GetResolutions( void )
+{
+	char buf[ MAX_STRING_CHARS ], *s;
+	int i, j;
+
+	numResolutions = 0;
+	trap_Cvar_VariableStringBuffer( "r_availableModes", buf, sizeof( buf ) );
+	for ( s = buf; *s; ) {
+		int w = atoi( s ), h = 0;
+		char *x = strchr( s, 'x' );
+
+		if ( x )
+			h = atoi( x + 1 );
+		GraphicsOptions_AddResolution( w, h, qfalse );
+		s = strchr( s, ' ' );
+		if ( !s )
+			break;
+		s++;
+	}
+	if ( !numResolutions ) {
+		for ( i = 0; i < ARRAY_LEN( fallbackResolutions ); i++ )
+			GraphicsOptions_AddResolution( fallbackResolutions[ i ][ 0 ], fallbackResolutions[ i ][ 1 ], qfalse );
+	}
+	// the size the game runs at now is always on the list
+	GraphicsOptions_AddResolution( uis.glconfig.vidWidth, uis.glconfig.vidHeight, qtrue );
+
+	qsort( resList, numResolutions, sizeof( resList[ 0 ] ), GraphicsOptions_CompareResolutions );
+
+	numRatios = 0;
+	for ( i = 0; i < numResolutions; i++ ) {
+		char name[ 8 ];
+
+		Com_sprintf( resList[ i ].name, sizeof( resList[ i ].name ), "%dx%d", resList[ i ].w, resList[ i ].h );
+		resolutions[ i ] = resList[ i ].name;
+
+		GraphicsOptions_RatioName( resList[ i ].aspect, name, sizeof( name ) );
+		for ( j = 0; j < numRatios; j++ ) {
+			if ( !strcmp( ratioNames[ j ], name ) )
+				break;
+		}
+		if ( j == numRatios ) {
+			Q_strncpyz( ratioNames[ j ], name, sizeof( ratioNames[ j ] ) );
+			ratios[ j ] = ratioNames[ j ];
+			numRatios++;
+		}
+		resToRatio[ i ] = j;
+		ratioToRes[ j ] = i;	// sorted by size: the last one is the largest
+	}
+	resolutions[ numResolutions ] = NULL;
+	ratios[ numRatios ] = NULL;
+}
+
+/*
+=================
+GraphicsOptions_GetInitialVideo/*
 =================
 GraphicsOptions_GetInitialVideo
 =================
@@ -492,50 +500,6 @@ static void GraphicsOptions_GetInitialVideo( void )
 
 /*
 =================
-GraphicsOptions_GetResolutions
-=================
-*/
-static void GraphicsOptions_GetResolutions( void )
-{
-    trap_Cvar_VariableStringBuffer("r_availableModes", resbuf, sizeof(resbuf));
-    if(*resbuf)
-    {
-        char* s = resbuf;
-        unsigned int i = 0;
-        while( s && i < sizeof(detectedResolutions)/sizeof(detectedResolutions[0])-1)
-        {
-            detectedResolutions[i++] = s;
-            s = strchr(s, ' ');
-            if( s )
-                *s++ = '\0';
-        }
-        detectedResolutions[ i ] = NULL;
-
-		// add custom resolution if not in mode list
-		if ( i < ARRAY_LEN(detectedResolutions)-1 )
-        {
-			Com_sprintf( currentResolution, sizeof ( currentResolution ), "%dx%d", uis.glconfig.vidWidth, uis.glconfig.vidHeight );
-
-			for( i = 0; detectedResolutions[ i ]; i++ )
-			{
-				if ( strcmp( detectedResolutions[ i ], currentResolution ) == 0 )
-					break;
-			}
-
-			if ( detectedResolutions[ i ] == NULL )
-			{
-				detectedResolutions[ i++ ] = currentResolution;
-				detectedResolutions[ i ] = NULL;
-			}
-		
-		resolutions = detectedResolutions;
-		resolutionsDetected = qtrue;
-        }
-    }
-}
-
-/*
-=================
 GraphicsOptions_CheckConfig
 =================
 */
@@ -546,8 +510,6 @@ static void GraphicsOptions_CheckConfig( void )
 	for ( i = 0; i < NUM_IVO_TEMPLATES-1; i++ )
 	{
 		if ( s_ivo_templates[i].driver != s_graphicsoptions.driver.curvalue )
-			continue;
-		if ( GraphicsOptions_FindDetectedResolution(s_ivo_templates[i].mode) != s_graphicsoptions.mode.curvalue )
 			continue;
 		if ( s_ivo_templates[i].fullscreen != s_graphicsoptions.fs.curvalue )
 			continue;
@@ -685,30 +647,13 @@ static void GraphicsOptions_ApplyChanges( void *unused, int notification )
 	trap_Cvar_SetValue( "r_picmip", 3 - s_graphicsoptions.tq.curvalue );
 	trap_Cvar_SetValue( "r_allowExtensions", s_graphicsoptions.allow_extensions.curvalue );
 
-	if( resolutionsDetected )
+	// any listed size, as a custom mode
+	if ( s_graphicsoptions.mode.curvalue >= 0 && s_graphicsoptions.mode.curvalue < numResolutions )
 	{
-		// search for builtin mode that matches the detected mode
-		int mode;
-		if ( s_graphicsoptions.mode.curvalue == -1
-			|| s_graphicsoptions.mode.curvalue >= sizeof(detectedResolutions)/sizeof(detectedResolutions[0]) ) {
-			s_graphicsoptions.mode.curvalue = 0;
-		}
-		mode = GraphicsOptions_FindBuiltinResolution( s_graphicsoptions.mode.curvalue );
-		if( mode == -1 )
-		{
-			char w[ 16 ], h[ 16 ];
-			Q_strncpyz( w, detectedResolutions[ s_graphicsoptions.mode.curvalue ], sizeof( w ) );
-			*strchr( w, 'x' ) = 0;
-			Q_strncpyz( h,
-					strchr( detectedResolutions[ s_graphicsoptions.mode.curvalue ], 'x' ) + 1, sizeof( h ) );
-			trap_Cvar_Set( "r_customwidth", w );
-			trap_Cvar_Set( "r_customheight", h );
-		}
-
-		trap_Cvar_SetValue( "r_mode", mode );
+		trap_Cvar_SetValue( "r_customwidth", resList[ s_graphicsoptions.mode.curvalue ].w );
+		trap_Cvar_SetValue( "r_customheight", resList[ s_graphicsoptions.mode.curvalue ].h );
+		trap_Cvar_SetValue( "r_mode", -1 );
 	}
-	else
-		trap_Cvar_SetValue( "r_mode", s_graphicsoptions.mode.curvalue );
 
 	trap_Cvar_SetValue( "r_fullscreen", s_graphicsoptions.fs.curvalue );
 	trap_Cvar_SetValue( "r_colorbits", 0 );
@@ -771,25 +716,17 @@ static void GraphicsOptions_Event( void* ptr, int event ) {
 
 	switch( ((menucommon_s*)ptr)->id ) {
         case ID_RATIO:
-            s_graphicsoptions.mode.curvalue = ratioToRes[ s_graphicsoptions.ratio.curvalue ];
-            // fall through to apply mode constraints
+		s_graphicsoptions.mode.curvalue = ratioToRes[ s_graphicsoptions.ratio.curvalue ];
+		break;
+
 	case ID_MODE:
-		// clamp 3dfx video modes
-		if ( s_graphicsoptions.driver.curvalue == 1 )
-		{
-			if ( s_graphicsoptions.mode.curvalue < 2 )
-				s_graphicsoptions.mode.curvalue = 2;
-			else if ( s_graphicsoptions.mode.curvalue > 6 )
-				s_graphicsoptions.mode.curvalue = 6;
-		}
-                s_graphicsoptions.ratio.curvalue = resToRatio[ s_graphicsoptions.mode.curvalue ];
+		s_graphicsoptions.ratio.curvalue = resToRatio[ s_graphicsoptions.mode.curvalue ];
 		break;
 
 	case ID_LIST:
 		ivo = &s_ivo_templates[s_graphicsoptions.list.curvalue];
 
-		s_graphicsoptions.mode.curvalue        = GraphicsOptions_FindDetectedResolution(ivo->mode);
-                s_graphicsoptions.ratio.curvalue       = resToRatio[ s_graphicsoptions.mode.curvalue ];
+		// a quality preset leaves the resolution alone
 		s_graphicsoptions.tq.curvalue          = ivo->tq;
 		s_graphicsoptions.lighting.curvalue    = ivo->lighting;
 		s_graphicsoptions.texturebits.curvalue = ivo->texturebits;
@@ -864,36 +801,11 @@ GraphicsOptions_SetMenuItems
 */
 static void GraphicsOptions_SetMenuItems( void )
 {
-	s_graphicsoptions.mode.curvalue =
-		GraphicsOptions_FindDetectedResolution( trap_Cvar_VariableValue( "r_mode" ) );
-
+	// the size the game runs at now
+	s_graphicsoptions.mode.curvalue = GraphicsOptions_FindResolution( uis.glconfig.vidWidth, uis.glconfig.vidHeight );
 	if ( s_graphicsoptions.mode.curvalue < 0 )
-	{
-		if( resolutionsDetected )
-		{
-			int i;
-			char buf[MAX_STRING_CHARS];
-			trap_Cvar_VariableStringBuffer("r_customwidth", buf, sizeof(buf)-2);
-			buf[strlen(buf)+1] = 0;
-			buf[strlen(buf)] = 'x';
-			trap_Cvar_VariableStringBuffer("r_customheight", buf+strlen(buf), sizeof(buf)-strlen(buf));
-
-			for(i = 0; detectedResolutions[i]; ++i)
-			{
-				if(Q_strequal(buf, detectedResolutions[i]))
-				{
-					s_graphicsoptions.mode.curvalue = i;
-					break;
-				}
-			}
-			if ( s_graphicsoptions.mode.curvalue < 0 )
-				s_graphicsoptions.mode.curvalue = 0;
-		}
-		else
-		{
-			s_graphicsoptions.mode.curvalue = 3;
-		}
-	}
+		s_graphicsoptions.mode.curvalue = 0;
+	s_graphicsoptions.ratio.curvalue = resToRatio[ s_graphicsoptions.mode.curvalue ];
 	s_graphicsoptions.fs.curvalue = trap_Cvar_VariableValue("r_fullscreen");
 	s_graphicsoptions.allow_extensions.curvalue = trap_Cvar_VariableValue("r_allowExtensions");
         s_graphicsoptions.flares.curvalue = trap_Cvar_VariableValue("r_flares");
@@ -1031,8 +943,7 @@ void GraphicsOptions_MenuInit( void )
 	memset( &s_graphicsoptions, 0 ,sizeof(graphicsoptions_t) );
 
 
-        GraphicsOptions_GetResolutions();
-        GraphicsOptions_GetAspectRatios();
+	GraphicsOptions_GetResolutions();
 
 	GraphicsOptions_Cache();
 

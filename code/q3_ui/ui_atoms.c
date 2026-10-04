@@ -1006,6 +1006,12 @@ qboolean UI_ConsoleCommand( int realTime ) {
 	// ensure minimum menu data is available
 	Menu_Cache();
 
+	// oax: open the graphics options directly (tests, binds)
+	if ( Q_strequal(cmd, "ui_graphics") ) {
+		UI_GraphicsOptionsMenu();
+		return qtrue;
+	}
+
 	if ( Q_strequal(cmd, "levelselect") ) {
 		UI_SPLevelMenu_f();
 		return qtrue;
