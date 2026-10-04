@@ -35,6 +35,8 @@ Flags: `serverinfo` (sent to clients), `latch` (takes effect on the next map),
 | `cg_oaxVehErrorDecay` | 150 | archive | Milliseconds over which a vehicle prediction error is blended out. |
 | `cg_oaxVehSnap` | 96 | archive | A prediction error over this many units snaps instead of blending (a teleport). |
 | `cg_oaxVehHud` | 1 | archive | The vehicle HUD: vehicle health for riders, speed for the driver. |
+| `cg_oaxGroundFx` | 1 | archive | Ground effects on maps whose worldspawn sets `oax_groundfx 1`: rings where players wade, vehicle dust, splashes and tyre tracks. |
+| `cg_oaxUnderwaterFog` | "" | archive | Overrides the view fog (`r g b density`) while the eye is in water, on maps whose worldspawn sets `oax_underwaterfog`; empty = the map's. |
 
 ## Test-only cvars
 

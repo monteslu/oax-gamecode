@@ -231,7 +231,7 @@ void CG_OAXRenderInit( void ) {
 	memset( lightStyles, 0, sizeof( lightStyles ) );
 	lastViewFog[0] = '\0';
 	trap_Cvar_Register( &cg_oaxViewFog, "cg_oaxViewFog", "", CVAR_CHEAT );
-	trap_Cvar_Register( &cg_oaxUnderwaterFog, "cg_oaxUnderwaterFog", "0.16 0.27 0.23 0.011", CVAR_ARCHIVE );
+	trap_Cvar_Register( &cg_oaxUnderwaterFog, "cg_oaxUnderwaterFog", "", CVAR_ARCHIVE );
 	underwaterFog = 0;
 	trap_Cvar_Register( &cg_oaxSkyPortalTime, "cg_oaxSkyPortalTime", "-1", CVAR_CHEAT );
 	if ( haveSkyPortal ) {
@@ -241,22 +241,33 @@ void CG_OAXRenderInit( void ) {
 
 /* after the scene's entities are added, before the main scene renders */
 /*
-CG_OAXUpdateUnderwater: with the eye in water, the view fog is the water's
-(cg_oaxUnderwaterFog "r g b density", exponential from the eye), so being
-under the surface looks like it. Leaving the water clears it; a zone's fog
-or cg_oaxViewFog comes back on the next frame.
+CG_OAXUpdateUnderwater: on a map whose worldspawn sets "oax_underwaterfog"
+("r g b density", or "1" for a green-grey pond), with the eye in water the
+view fog is the water's (exponential from the eye; cg_oaxUnderwaterFog, when
+set, overrides the map's), so being under the surface looks like it. Leaving
+the water clears it; a zone's fog or cg_oaxViewFog comes back on the next
+frame. Maps without the key keep the stock look.
 */
 static void CG_OAXUpdateUnderwater( void ) {
 	vec3_t	col;
 	float	density;
 
-	if ( CG_PointContents( cg.refdef.vieworg, -1 ) & CONTENTS_WATER ) {
+	const char *map = CG_OAXWorldspawnValue( "oax_underwaterfog" );
+
+	if ( map && ( CG_PointContents( cg.refdef.vieworg, -1 ) & CONTENTS_WATER ) ) {
 		trap_Cvar_Update( &cg_oaxUnderwaterFog );
 		col[0] = 0.16f;
 		col[1] = 0.27f;
 		col[2] = 0.23f;
 		density = 0.011f;
-		sscanf( cg_oaxUnderwaterFog.string, "%f %f %f %f", &col[0], &col[1], &col[2], &density );
+		if ( sscanf( cg_oaxUnderwaterFog.string[0] ? cg_oaxUnderwaterFog.string : map, "%f %f %f %f",
+				&col[0], &col[1], &col[2], &density ) < 4 ) {
+			/* "1" (or anything short of four numbers): the default */
+			col[0] = 0.16f;
+			col[1] = 0.27f;
+			col[2] = 0.23f;
+			density = 0.011f;
+		}
 		trap_OAX_R_SetViewFog( col, density, 0, 0 );
 		if ( !underwaterFog ) {
 			BG_OAXDebugSetInt( "cg_underwater", 1 );

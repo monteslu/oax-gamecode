@@ -75,3 +75,29 @@ oaxfx/trailGlow
 		rgbGen vertex
 	}
 }
+
+// water ripples (particles/oax_ground.prt)
+oaxfx/ripple
+{
+	nopicmip
+	cull none
+	{
+		map *oaxring
+		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		rgbGen vertex
+		alphaGen vertex
+	}
+}
+
+// tyre tracks (projected decals, cg_oax_fx.c CG_OAXTrack)
+oaxfx/tread
+{
+	nopicmip
+	polygonOffset
+	{
+		map *oaxtread
+		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		rgbGen vertex
+		alphaGen vertex
+	}
+}

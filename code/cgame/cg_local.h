@@ -2096,6 +2096,15 @@ void CG_OAXImpactFx( int weapon, const vec3_t origin, const vec3_t dir, const fl
 qboolean CG_OAXDecal( qhandle_t shader, const vec3_t origin, const vec3_t dir, float orientation,
 	float r, float g, float b, float a, qboolean alphaFade, float radius );
 qboolean CG_OAXFxConsoleCommand( const char *cmd );
+/* a worldspawn oax_* key's value, NULL if the map does not set it */
+const char *CG_OAXWorldspawnValue( const char *name );
+/* ground effects (the map's worldspawn "oax_groundfx" and cg_oaxGroundFx) */
+qboolean CG_OAXGroundFxOn( void );
+qboolean CG_OAXWaterSurface( const vec3_t p, float above, float below, vec3_t surface );
+void CG_OAXRipple( const vec3_t surface, float scale );
+void CG_OAXSplash( const vec3_t surface, float scale );
+void CG_OAXGroundDust( const vec3_t at, const vec3_t normal, float scale );
+void CG_OAXTrack( int num, int wheel, const vec3_t contact, const vec3_t n, float width );
 int trap_OAX_R_RegisterFx( const char *name );
 int trap_OAX_R_AddFx( const oaxFx_t *fx );
 int trap_OAX_R_AddDecal( const oaxDecal_t *decal );

@@ -486,6 +486,88 @@ drawing
 ==============================================================================
 */
 
+/*
+CG_VehGroundFx (the map's ground effects, cg_oax_fx.c): each wheel on the
+ground leaves a tyre track and, at speed, a puff of dust; a wheel in water
+leaves rings and spray instead. A hover vehicle's thrusters raise dust or
+rings from what is under them, more the lower they ride.
+*/
+#define VEH_FX_MSEC	70
+#define VEH_FX_RANGE	3000	/* farther vehicles kick up nothing anyone would see */
+static int vehFxTime[MAX_GENTITIES];
+
+static void CG_VehGroundFx( centity_t *cent, refEntity_t *ent, const bgVehicleType_t *t, const float *susp ) {
+	const entityState_t *s = &cent->currentState;
+	float speed = VectorLength( s->pos.trDelta );
+	qboolean puff;
+	vec3_t up = { 0, 0, 1 };
+	int i;
+
+	if ( !CG_OAXGroundFxOn() || Distance( ent->origin, cg.refdef.vieworg ) > VEH_FX_RANGE ) {
+		return;
+	}
+	puff = cg.time - vehFxTime[s->number] >= VEH_FX_MSEC || cg.time < vehFxTime[s->number];
+	if ( puff ) {
+		vehFxTime[s->number] = cg.time;
+	}
+	for ( i = 0; i < t->numWheels && i < OAX_VEH_MAX_WHEELS; i++ ) {
+		vec3_t local, hub, contact, end, surface;
+		trace_t tr;
+
+		VectorCopy( t->wheels[i], local );
+		if ( t->physType == 1 ) {
+			/* a thruster: what is under it, within reach; idling, one
+			   thruster at a time stirs the ground */
+			if ( puff && speed < 60 && i != ( cg.time / VEH_FX_MSEC ) % t->numWheels ) {
+				continue;
+			}
+			BG_VehLocalToWorld( ent->origin, ent->axis, local, hub );
+			VectorCopy( hub, end );
+			end[2] -= 110;
+			if ( CG_OAXWaterSurface( hub, 0, 110, surface ) ) {
+				if ( puff ) {
+					CG_OAXRipple( surface, 1.4f );
+					if ( speed > 120 ) {
+						CG_OAXSplash( surface, 0.8f );
+					}
+				}
+				continue;
+			}
+			CG_Trace( &tr, hub, NULL, NULL, end, s->number, MASK_SOLID );
+			if ( puff && tr.fraction < 1.0f && !tr.startsolid ) {
+				CG_OAXGroundDust( tr.endpos, tr.plane.normal, 0.6f + ( 1.0f - tr.fraction ) * 0.8f + speed * 0.0008f );
+			}
+			continue;
+		}
+		if ( !( s->legsAnim & ( 1 << i ) ) && !( i >= 4 && ( s->legsAnim & 15 ) ) ) {
+			continue;	/* off the ground (the middle pair rides with the others) */
+		}
+		local[2] -= susp[i] + t->wheelRadius;
+		BG_VehLocalToWorld( ent->origin, ent->axis, local, contact );
+		VectorCopy( contact, hub );
+		hub[2] += t->wheelRadius;
+		if ( CG_OAXWaterSurface( hub, t->wheelRadius, t->wheelRadius + 4, surface ) ) {
+			if ( puff && speed > 40 ) {
+				CG_OAXRipple( surface, 1.0f + speed * 0.001f );
+				if ( speed > 200 ) {
+					CG_OAXSplash( surface, 0.5f + speed * 0.0008f );
+				}
+			}
+			continue;
+		}
+		VectorCopy( contact, end );
+		end[2] -= 16;
+		CG_Trace( &tr, hub, NULL, NULL, end, s->number, MASK_SOLID );
+		if ( tr.fraction >= 1.0f || tr.startsolid ) {
+			continue;
+		}
+		CG_OAXTrack( s->number, i, tr.endpos, tr.plane.normal, t->wheelRadius * 1.3f );
+		if ( puff && speed > 150 && ( t->wheels[i][0] < 0 || speed > 450 ) ) {
+			CG_OAXGroundDust( tr.endpos, up, 0.5f + speed * 0.0012f );
+		}
+	}
+}
+
 void CG_OAXVehicle( centity_t *cent ) {
 	entityState_t *s = &cent->currentState;
 	const bgVehicleType_t *t = BG_VehicleType( s->generic1 );
@@ -568,6 +650,8 @@ void CG_OAXVehicle( centity_t *cent ) {
 			trap_R_AddLightToScene( p, 70, 0.3f, 0.6f, 1.0f );
 		}
 	}
+
+	CG_VehGroundFx( cent, &ent, t, susp );
 
 	/* damaged: smoke */
 	if ( s->frame < 40 && ( cg.time / 120 ) != ( ( cg.time - cg.frametime ) / 120 ) ) {

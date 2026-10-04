@@ -1,0 +1,85 @@
+// oax game code
+// Copyright (C) 2026 Luis Montes
+//
+// This file is part of the oax game code, a fork of OpenArena's gamecode.
+// It is free software; you can redistribute it and/or modify it under the
+// terms of the GNU General Public License as published by the Free Software
+// Foundation; either version 2 of the License, or (at your option) any later
+// version. The combined game code is distributed under GPLv3.
+//
+// This program is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+// or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+// for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program. If not, see <https://www.gnu.org/licenses/>.
+
+// oax_ground.prt: what moving things kick up from the ground and the water
+// (code/cgame/cg_oax_fx.c): vehicle dust, water ripples and splashes.
+// Syntax as oax_weapons.prt; the decl's z axis is the ground's up.
+
+// a puff from a wheel or a thruster; the cgame tints it by spawn colour
+// and sizes it by speed (the system scale)
+particle oax/ground_dust {
+	{
+		count				4
+		material			oaxfx/smoke
+		time				1.8
+		cycles				1
+		bunching			0.4
+		distribution		sphere 6 6 2
+		direction			cone 70
+		speed				"40" to "6"
+		size				"8" to "32"
+		rotation			"10" to "30"
+		gravity				world -6
+		fadeIn				0.1
+		fadeOut				0.7
+		color				0.64 0.55 0.42 0.55
+		fadeColor			0.64 0.55 0.42 0
+	}
+}
+
+// one ring spreading on a water surface (z axis up)
+particle oax/ripple {
+	{
+		count				1
+		material			oaxfx/ripple
+		time				1.4
+		cycles				1
+		bunching			0
+		distribution		sphere 0 0 0
+		direction			cone 0
+		orientation			z
+		speed				"0"
+		size				"4" to "34"
+		rotation			"0"
+		gravity				0
+		fadeIn				0
+		fadeOut				0.85
+		color				0.85 0.9 0.9 0.55
+		fadeColor			0.85 0.9 0.9 0
+		softDistance		-1
+	}
+}
+
+// spray thrown up where a wheel or a thruster meets the water
+particle oax/splash {
+	{
+		count				6
+		material			oaxfx/smoke
+		time				0.7
+		cycles				1
+		bunching			0.3
+		distribution		sphere 4 4 1
+		direction			cone 40
+		speed				"90" to "20"
+		size				"3" to "12"
+		gravity				world 260
+		fadeIn				0
+		fadeOut				0.6
+		color				0.8 0.86 0.88 0.5
+		fadeColor			0.8 0.86 0.88 0
+	}
+}

@@ -39,13 +39,21 @@ used only when the engine advertises its token, and has a cvar:
   cg.time, evaluated from the entity's trajectory (re-evaluated when the
   trajectory changes, e.g. a grenade bounce), plus the drawn position.
 
+- Ground effects (a map opts in with the worldspawn key "oax_groundfx" "1";
+  cg_oaxGroundFx 0 turns them off): players wading leave spreading rings
+  on the water (particles/oax_ground.prt oax/ripple), vehicles throw dust
+  from their wheels and thrusters (oax/ground_dust), rings and spray on
+  water (oax/splash), and wheels leave tyre tracks (projected decals of
+  oaxfx/tread, one per CG_TRACK_SEG units of travel, CG_TRACK_LIFE ms).
+
 Test commands: oaxfx <decl> x y z [dx dy dz] spawns a particle system;
 oaxdecal <shader> x y z dx dy dz radius [angle [lifeMs [r g b]]] projects a decal.
 ===========================================================================
 */
 #include "cg_local.h"
+#include "../game/bg_oax_vehicle.h"
 
-#define MAX_CG_FX           128
+#define MAX_CG_FX           256
 #define MAX_EMITTER_DECLS   256
 #define MAX_CG_TRAILS       64
 #define TRAIL_HIST          48
@@ -95,6 +103,28 @@ static int          fxSparks, fxSmoke, fxExplosion, fxPlasma, fxRail, fxBulletSp
 static qhandle_t    trailSmokeShader, trailGlowShader;
 static int          decalsMade, fxSpawned;
 
+/* ground effects */
+#define CG_TRACK_SLOTS      32
+#define CG_TRACK_SEG        56      /* units of travel per tyre track decal */
+#define CG_TRACK_LIFE       9000    /* ms */
+typedef struct {
+	int     entity;                 /* -1 free */
+	int     seenTime;
+	int     have[OAX_VEH_MAX_WHEELS];
+	vec3_t  last[OAX_VEH_MAX_WHEELS];
+} cgTrack_t;
+
+static int          haveGroundFx;
+static vmCvar_t     cg_oaxGroundFx;
+static int          fxDust, fxRipple, fxSplash;
+static qhandle_t    treadShader;
+static int          rippleTime[MAX_GENTITIES];
+static cgTrack_t    tracks[CG_TRACK_SLOTS];
+static int          ripplesMade, tracksMade;
+
+static void CG_OAXGroundFxInit( void );
+static void CG_OAXPlayerRipples( void );
+
 /*
 =================
 Helpers
@@ -141,6 +171,7 @@ void CG_OAXFxInit( void ) {
 	trap_Cvar_Register( &cg_oaxDecals, "cg_oaxDecals", "1", CVAR_ARCHIVE );
 	trap_Cvar_Register( &cg_oaxTrails, "cg_oaxTrails", "1", CVAR_ARCHIVE );
 	trap_Cvar_Register( &cg_oaxTestTrail, "cg_oaxTestTrail", "", CVAR_CHEAT );
+	trap_Cvar_Register( &cg_oaxGroundFx, "cg_oaxGroundFx", "1", CVAR_ARCHIVE );
 
 	memset( cgFx, 0, sizeof( cgFx ) );
 	nextFx = fxCounter = 0;
@@ -166,6 +197,7 @@ void CG_OAXFxInit( void ) {
 		fxPlasma = RegisterFx( "oax/plasma_impact" );
 		fxRail = RegisterFx( "oax/rail_impact" );
 	}
+	CG_OAXGroundFxInit();
 	if ( haveTrails ) {
 		trailSmokeShader = trap_R_RegisterShader( "oaxfx/trailSmoke" );
 		trailGlowShader = trap_R_RegisterShader( "oaxfx/trailGlow" );
@@ -633,6 +665,261 @@ static void CG_OAXTrailsFrame( void ) {
 
 /*
 =================
+Ground effects
+=================
+*/
+
+/*
+=================
+CG_OAXWorldspawnValue
+
+A worldspawn key's value, NULL if the map does not set it. The oax keys
+(oax_*) are read once per map from the entity string's first entity (the
+engine's parse point starts there after a map load); reading on to the
+end rewinds that shared parse point for the next reader.
+=================
+*/
+#define MAX_WS_KEYS 16
+static int  wsParsed, wsNum;
+static char wsKey[MAX_WS_KEYS][32], wsValue[MAX_WS_KEYS][MAX_QPATH];
+
+const char *CG_OAXWorldspawnValue( const char *name ) {
+	int i;
+
+	if ( !wsParsed ) {
+		char key[MAX_TOKEN_CHARS], value[MAX_TOKEN_CHARS];
+
+		wsParsed = 1;
+		wsNum = 0;
+		if ( trap_GetEntityToken( key, sizeof( key ) ) && key[0] == '{' ) {
+			while ( trap_GetEntityToken( key, sizeof( key ) ) && key[0] != '}' ) {
+				if ( !trap_GetEntityToken( value, sizeof( value ) ) ) {
+					break;
+				}
+				if ( !Q_stricmpn( key, "oax_", 4 ) && wsNum < MAX_WS_KEYS ) {
+					Q_strncpyz( wsKey[wsNum], key, sizeof( wsKey[0] ) );
+					Q_strncpyz( wsValue[wsNum], value, sizeof( wsValue[0] ) );
+					wsNum++;
+				}
+			}
+		}
+		while ( trap_GetEntityToken( key, sizeof( key ) ) ) {
+		}
+	}
+	for ( i = 0; i < wsNum; i++ ) {
+		if ( !Q_stricmp( wsKey[i], name ) ) {
+			return wsValue[i];
+		}
+	}
+	return NULL;
+}
+
+static void CG_OAXGroundFxInit( void ) {
+	int i;
+
+	haveGroundFx = CG_OAXWorldspawnValue( "oax_groundfx" ) && atoi( CG_OAXWorldspawnValue( "oax_groundfx" ) );
+	fxDust = fxRipple = fxSplash = 0;
+	treadShader = 0;
+	if ( haveGroundFx ) {
+		if ( haveParticles ) {
+			fxDust = RegisterFx( "oax/ground_dust" );
+			fxRipple = RegisterFx( "oax/ripple" );
+			fxSplash = RegisterFx( "oax/splash" );
+		}
+		if ( haveDecals ) {
+			treadShader = trap_R_RegisterShader( "oaxfx/tread" );
+		}
+	}
+	memset( rippleTime, 0, sizeof( rippleTime ) );
+	for ( i = 0; i < CG_TRACK_SLOTS; i++ ) {
+		tracks[i].entity = -1;
+	}
+	ripplesMade = tracksMade = 0;
+	BG_OAXDebugSetInt( "cg_groundfx", haveGroundFx );
+}
+
+qboolean CG_OAXGroundFxOn( void ) {
+	trap_Cvar_Update( &cg_oaxGroundFx );
+	return haveGroundFx && cg_oaxGroundFx.integer;
+}
+
+/*
+=================
+CG_OAXWaterSurface
+
+The water surface under (or at) p: a trace against water brushes from
+above units over p down to below units under it. qfalse when there is no
+water there, or p + above is already under water.
+=================
+*/
+qboolean CG_OAXWaterSurface( const vec3_t p, float above, float below, vec3_t surface ) {
+	trace_t tr;
+	vec3_t start, end;
+
+	VectorCopy( p, start );
+	start[2] += above;
+	VectorCopy( p, end );
+	end[2] -= below;
+	CG_Trace( &tr, start, NULL, NULL, end, ENTITYNUM_NONE, CONTENTS_WATER );
+	if ( tr.startsolid || tr.allsolid || tr.fraction >= 1.0f ) {
+		return qfalse;
+	}
+	VectorCopy( tr.endpos, surface );
+	return qtrue;
+}
+
+/* a ring on the water at surface (scale 1: a wading player's) */
+void CG_OAXRipple( const vec3_t surface, float scale ) {
+	vec3_t p, up = { 0, 0, 1 };
+
+	VectorCopy( surface, p );
+	p[2] += 0.75f;	/* over the surface, which writes depth */
+	if ( CG_OAXSpawnFx( fxRipple, p, up, scale, NULL ) ) {
+		ripplesMade++;
+	}
+}
+
+void CG_OAXSplash( const vec3_t surface, float scale ) {
+	vec3_t up = { 0, 0, 1 };
+
+	CG_OAXSpawnFx( fxSplash, surface, up, scale, NULL );
+}
+
+void CG_OAXGroundDust( const vec3_t at, const vec3_t normal, float scale ) {
+	vec3_t p;
+
+	VectorMA( at, 6.0f, normal, p );	/* clear of the ground's soft-particle fade */
+	CG_OAXSpawnFx( fxDust, p, normal, scale, NULL );
+}
+
+/*
+=================
+CG_OAXPlayerRipples
+
+Players standing or wading in water: a ring every so often, more often
+while they move.
+=================
+*/
+static void PlayerRipple( int num, const vec3_t origin, const vec3_t velocity ) {
+	vec3_t surface;
+	float speed = sqrt( velocity[0] * velocity[0] + velocity[1] * velocity[1] );
+	int interval = speed > 60.0f ? 240 : 1100;
+
+	if ( cg.time - rippleTime[num] < interval && cg.time >= rippleTime[num] ) {
+		return;
+	}
+	/* from about the eyes down to the feet (player boxes are -24..32) */
+	if ( !CG_OAXWaterSurface( origin, 30.0f, 24.0f, surface ) ) {
+		return;
+	}
+	rippleTime[num] = cg.time;
+	CG_OAXRipple( surface, speed > 60.0f ? 1.0f : 0.6f );
+	if ( speed > 250.0f ) {
+		CG_OAXSplash( surface, 0.6f );
+	}
+}
+
+static void CG_OAXPlayerRipples( void ) {
+	int i;
+
+	if ( !cg.snap || !fxRipple || !CG_OAXGroundFxOn() || !cg_oaxParticles.integer ) {
+		return;
+	}
+	for ( i = 0; i < cg.snap->numEntities; i++ ) {
+		centity_t *cent = &cg_entities[cg.snap->entities[i].number];
+
+		if ( cent->currentState.eType != ET_PLAYER || ( cent->currentState.eFlags & EF_DEAD ) ) {
+			continue;
+		}
+		PlayerRipple( cent->currentState.number, cent->lerpOrigin, cent->currentState.pos.trDelta );
+	}
+	if ( cg.predictedPlayerState.pm_type == PM_NORMAL && !CG_OAXVehicleDriving() ) {
+		PlayerRipple( cg.predictedPlayerState.clientNum, cg.predictedPlayerState.origin,
+			cg.predictedPlayerState.velocity );
+	}
+	BG_OAXDebugSetInt( "cg_ripples", ripplesMade );
+	BG_OAXDebugSetInt( "cg_tracks", tracksMade );
+}
+
+/*
+=================
+CG_OAXTrack
+
+A wheel of vehicle entity num touching the ground at contact (ground
+normal n): every CG_TRACK_SEG units of travel since its last mark, a tyre
+track decal from there to here. A jump of more than four segments (a
+respawn, a long airborne stretch) starts over without a mark.
+=================
+*/
+void CG_OAXTrack( int num, int wheel, const vec3_t contact, const vec3_t n, float width ) {
+	cgTrack_t *t = NULL;
+	oaxDecal_t d;
+	vec3_t fwd, mid;
+	float len;
+	int i, oldest = 0;
+
+	if ( !treadShader || !cg_oaxDecals.integer || wheel < 0 || wheel >= OAX_VEH_MAX_WHEELS ) {
+		return;
+	}
+	for ( i = 0; i < CG_TRACK_SLOTS; i++ ) {
+		if ( tracks[i].entity == num ) {
+			t = &tracks[i];
+			break;
+		}
+		if ( tracks[i].seenTime < tracks[oldest].seenTime ) {
+			oldest = i;
+		}
+	}
+	if ( !t ) {
+		t = &tracks[oldest];
+		memset( t, 0, sizeof( *t ) );
+		t->entity = num;
+	}
+	t->seenTime = cg.time;
+	if ( !t->have[wheel] ) {
+		VectorCopy( contact, t->last[wheel] );
+		t->have[wheel] = 1;
+		return;
+	}
+	VectorSubtract( contact, t->last[wheel], fwd );
+	len = VectorLength( fwd );
+	if ( len < CG_TRACK_SEG ) {
+		return;
+	}
+	VectorCopy( contact, t->last[wheel] );
+	if ( len > CG_TRACK_SEG * 4 ) {
+		return;
+	}
+	/* the box: axis 0 out of the ground, 1 across the tyre, 2 along it */
+	memset( &d, 0, sizeof( d ) );
+	VectorMA( contact, -0.5f, fwd, mid );
+	VectorCopy( mid, d.origin );
+	VectorNormalize2( n, d.axis[0] );
+	VectorMA( fwd, -DotProduct( fwd, d.axis[0] ), d.axis[0], d.axis[2] );
+	if ( VectorNormalize( d.axis[2] ) < 1.0f ) {
+		return;
+	}
+	CrossProduct( d.axis[2], d.axis[0], d.axis[1] );
+	d.halfSize[0] = 10;
+	d.halfSize[1] = width * 0.5f;
+	d.halfSize[2] = len * 0.5f + 1.0f;
+	d.rgba[0] = 0.16f;
+	d.rgba[1] = 0.13f;
+	d.rgba[2] = 0.09f;
+	d.rgba[3] = 0.8f;
+	d.shader = treadShader;
+	d.startTime = cg.time;
+	d.lifeMs = CG_TRACK_LIFE;
+	d.fadeMs = 3000;
+	d.flags = OAXDECAL_ALPHAFADE;
+	if ( trap_OAX_R_AddDecal( &d ) > 0 ) {
+		tracksMade++;
+		decalsMade++;
+	}
+}
+
+/*
+=================
 CG_OAXFxFrame
 
 After the scene's entities are added: the spawned particle systems and
@@ -660,6 +947,7 @@ void CG_OAXFxFrame( void ) {
 		}
 	}
 	CG_OAXTrailsFrame();
+	CG_OAXPlayerRipples();
 
 	BG_OAXDebugSetInt( "cg_fx_live", live );
 	BG_OAXDebugSetInt( "cg_fx_spawned", fxSpawned );
