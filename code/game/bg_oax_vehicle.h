@@ -82,6 +82,8 @@ typedef struct {
 	float		colHalf[3];
 	float		colOffset[3];
 	int			mirrorLeftWheels;	/* one wheel model for both sides: turn the +y ones round */
+	int			rearSteer;			/* the rear pair (wheels 2, 3) steers opposite the front:
+									   a long six-wheeler turns about its middle axle */
 } bgVehicleType_t;
 
 extern const bgVehicleType_t bg_vehicleTypes[OAX_VEH_NUM_TYPES];

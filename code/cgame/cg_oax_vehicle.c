@@ -625,7 +625,7 @@ void CG_OAXVehicle( centity_t *cent ) {
 			BG_VehLocalToWorld( ent.origin, ent.axis, local, w.origin );
 			VectorCopy( w.origin, w.oldorigin );
 			ang[PITCH] = spin;
-			ang[YAW] = i < 2 ? steer : 0;
+			ang[YAW] = i < 2 ? steer : ( t->rearSteer && i < 4 ? -steer : 0 );
 			/* one wheel model for both sides: the left ones turned round so
 			   the hub faces out (and rolling the other way about their axis) */
 			if ( t->mirrorLeftWheels && t->wheels[i][1] > 0 ) {

@@ -81,14 +81,14 @@ const bgVehicleType_t bg_vehicleTypes[OAX_VEH_NUM_TYPES] = {
 		1.8f, 0.7f,
 		2000000, 4200000,
 		850, 360,
-		0.45f, 0.55f, 2.0f,
+		0.5f, 0.4f, 3.0f,	/* lock, lock lost at speed, steer rate (with rearSteer: twice the turn) */
 		1.5f, 0.55f, 0.4f, 0.4f,
 		0, 0,
 		2, { { 40, 18, 30 }, { -20, 0, 70 } },
 		900,
 		"models/oax/vehicles/apc.md3", "models/oax/vehicles/apc_wheel.md3",
 		{ 115, 63, 44 }, { 0, 0, -8 },	/* hull top at +36, down to the wheels' bottoms */
-		1
+		1, 1
 	},
 	{
 		/* an armoured hover tank: the turret is part of the model */
@@ -173,7 +173,7 @@ void BG_VehicleDef( int type, const vec3_t origin, const float *quat, oaxPhysVeh
 		VectorCopy( t->wheels[i], def->wheels[i] );
 	}
 	def->driveMask = ( 1 << t->numWheels ) - 1;
-	def->steerMask = 3;		/* the front pair */
+	def->steerMask = t->rearSteer ? 15 : 3;	/* the front pair; rear too (steering opposite, x < 0) */
 	def->wheelRadius = t->wheelRadius;
 	def->restLength = t->restLength;
 	def->springHertz = t->springHertz;
