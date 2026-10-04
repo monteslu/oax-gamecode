@@ -35,9 +35,9 @@ Body space: x forward, y left, z up, the origin at the chassis center
 
 #define OAX_VEH_BUGGY		0
 #define OAX_VEH_HOVER		1
-#define OAX_VEH_NUM_TYPES	2
+#define OAX_VEH_NUM_TYPES	4
 
-#define OAX_VEH_MAX_WHEELS	4
+#define OAX_VEH_MAX_WHEELS	6
 #define OAX_VEH_MAX_SEATS	2
 #define OAX_VEH_SEAT_DRIVER	0
 #define OAX_VEH_SEAT_GUNNER	1
@@ -81,6 +81,7 @@ typedef struct {
 	   space, chassis and wheels together, so nobody walks through a wheel */
 	float		colHalf[3];
 	float		colOffset[3];
+	int			mirrorLeftWheels;	/* one wheel model for both sides: turn the +y ones round */
 } bgVehicleType_t;
 
 extern const bgVehicleType_t bg_vehicleTypes[OAX_VEH_NUM_TYPES];

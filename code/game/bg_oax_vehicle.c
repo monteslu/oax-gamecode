@@ -68,6 +68,45 @@ const bgVehicleType_t bg_vehicleTypes[OAX_VEH_NUM_TYPES] = {
 		300,
 		"models/oax/vehicles/hover.md3", "",
 		{ 64, 36, 10 }, { 0, 0, 0 }
+	},
+	{
+		/* a six-wheeled armoured carrier: slower, heavier, driver and a
+		   gunner on the roof; model and wheel from models/oax/vehicles */
+		"apc", VEH_WHEELED,
+		{ 112, 58, 34 }, 2400, { 0, 0, -18 },
+		/* front, rear, then the middle pair (not networked: drawn between) */
+		6, { { 74, 47, -8 }, { 74, -47, -8 }, { -72, 47, -8 }, { -72, -47, -8 }, { 1, 47, -8 }, { 1, -47, -8 } },
+		24,		/* wheel radius */
+		20,		/* suspension rest length */
+		1.8f, 0.7f,
+		2000000, 4200000,
+		850, 360,
+		0.45f, 0.55f, 2.0f,
+		1.5f, 0.55f, 0.4f, 0.4f,
+		0, 0,
+		2, { { 40, 18, 30 }, { -20, 0, 70 } },
+		900,
+		"models/oax/vehicles/apc.md3", "models/oax/vehicles/apc_wheel.md3",
+		{ 115, 63, 44 }, { 0, 0, -8 },	/* hull top at +36, down to the wheels' bottoms */
+		1
+	},
+	{
+		/* an armoured hover tank: the turret is part of the model */
+		"hovertank", VEH_HOVER,
+		{ 78, 43, 11 }, 900, { 0, 0, -4 },
+		4, { { 60, 34, -11 }, { 60, -34, -11 }, { -60, 34, -11 }, { -60, -34, -11 } },
+		0,
+		34,		/* hover height */
+		2.2f, 0.85f,
+		520000, 900000,
+		1000, 360,
+		1.4f, 0, 0,
+		0, 0.06f, 0, 0,
+		5.0f, 0.25f,
+		1, { { -10, 0, 34 }, { 0, 0, 0 } },
+		600,
+		"models/oax/vehicles/hovertank.md3", "",
+		{ 78, 43, 18 }, { 0, 0, 6 }
 	}
 };
 
@@ -214,6 +253,9 @@ void BG_VehStateFromEntity( const entityState_t *s, oaxPhysVehicleState_t *st, i
 	st->suspension[1] = s->origin2[1];
 	st->suspension[2] = s->origin2[2];
 	st->suspension[3] = s->angles2[0];
+	/* six wheels: the middle pair is not sent; drawn between front and back */
+	st->suspension[4] = 0.5f * ( st->suspension[0] + st->suspension[2] );
+	st->suspension[5] = 0.5f * ( st->suspension[1] + st->suspension[3] );
 	if ( worldTime ) {
 		*worldTime = s->pos.trTime;
 	}

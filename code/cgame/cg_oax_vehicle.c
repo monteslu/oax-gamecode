@@ -529,6 +529,9 @@ void CG_OAXVehicle( centity_t *cent ) {
 			steer += f * ( n->angles2[1] - steer );
 			spin = LerpAngle( spin, n->angles2[2], f );
 		}
+		/* six wheels: the middle pair is not sent; drawn between front and back */
+		susp[4] = 0.5f * ( susp[0] + susp[2] );
+		susp[5] = 0.5f * ( susp[1] + susp[3] );
 	}
 	if ( s->modelindex2 && t->numWheels ) {
 		for ( i = 0; i < t->numWheels && i < OAX_VEH_MAX_WHEELS; i++ ) {
@@ -541,6 +544,12 @@ void CG_OAXVehicle( centity_t *cent ) {
 			VectorCopy( w.origin, w.oldorigin );
 			ang[PITCH] = spin;
 			ang[YAW] = i < 2 ? steer : 0;
+			/* one wheel model for both sides: the left ones turned round so
+			   the hub faces out (and rolling the other way about their axis) */
+			if ( t->mirrorLeftWheels && t->wheels[i][1] > 0 ) {
+				ang[YAW] += 180;
+				ang[PITCH] = -spin;
+			}
 			ang[ROLL] = 0;
 			AnglesToAxis( ang, waxis );
 			MatrixMultiply( waxis, ent.axis, w.axis );

@@ -63,6 +63,8 @@ static cgLightStyle_t	lightStyles[OAX_LIGHTSTYLE_COUNT];
 static vmCvar_t			cg_oaxViewFog;
 static vmCvar_t			cg_oaxSkyPortalTime;
 static char				lastViewFog[MAX_CVAR_VALUE_STRING];
+static vmCvar_t			cg_oaxUnderwaterFog;
+static int				underwaterFog;
 static int				haveSkyPortal, haveLightStyle, haveViewFog;
 
 static void CG_OAXParseVec( const char *s, vec3_t v ) {
@@ -229,6 +231,8 @@ void CG_OAXRenderInit( void ) {
 	memset( lightStyles, 0, sizeof( lightStyles ) );
 	lastViewFog[0] = '\0';
 	trap_Cvar_Register( &cg_oaxViewFog, "cg_oaxViewFog", "", CVAR_CHEAT );
+	trap_Cvar_Register( &cg_oaxUnderwaterFog, "cg_oaxUnderwaterFog", "0.16 0.27 0.23 0.011", CVAR_ARCHIVE );
+	underwaterFog = 0;
 	trap_Cvar_Register( &cg_oaxSkyPortalTime, "cg_oaxSkyPortalTime", "-1", CVAR_CHEAT );
 	if ( haveSkyPortal ) {
 		CG_OAXUpdateSkyPortal();
@@ -236,12 +240,44 @@ void CG_OAXRenderInit( void ) {
 }
 
 /* after the scene's entities are added, before the main scene renders */
+/*
+CG_OAXUpdateUnderwater: with the eye in water, the view fog is the water's
+(cg_oaxUnderwaterFog "r g b density", exponential from the eye), so being
+under the surface looks like it. Leaving the water clears it; a zone's fog
+or cg_oaxViewFog comes back on the next frame.
+*/
+static void CG_OAXUpdateUnderwater( void ) {
+	vec3_t	col;
+	float	density;
+
+	if ( CG_PointContents( cg.refdef.vieworg, -1 ) & CONTENTS_WATER ) {
+		trap_Cvar_Update( &cg_oaxUnderwaterFog );
+		col[0] = 0.16f;
+		col[1] = 0.27f;
+		col[2] = 0.23f;
+		density = 0.011f;
+		sscanf( cg_oaxUnderwaterFog.string, "%f %f %f %f", &col[0], &col[1], &col[2], &density );
+		trap_OAX_R_SetViewFog( col, density, 0, 0 );
+		if ( !underwaterFog ) {
+			BG_OAXDebugSetInt( "cg_underwater", 1 );
+		}
+		underwaterFog = 1;
+	} else if ( underwaterFog ) {
+		VectorClear( col );
+		trap_OAX_R_SetViewFog( col, 0, 0, 0 );
+		lastViewFog[0] = '\001';	/* send cg_oaxViewFog again */
+		BG_OAXDebugSetInt( "cg_underwater", 0 );
+		underwaterFog = 0;
+	}
+}
+
 void CG_OAXRenderFrame( void ) {
 	if ( haveLightStyle ) {
 		CG_OAXUpdateLightStyles();
 	}
 	if ( haveViewFog ) {
 		CG_OAXUpdateViewFogCvar();
+		CG_OAXUpdateUnderwater();
 	}
 	if ( haveSkyPortal ) {
 		CG_OAXUpdateSkyPortal();
