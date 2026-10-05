@@ -2137,7 +2137,8 @@ void PmoveSingle (pmove_t *pmove)
 	}
 
 	// oax vehicles: an occupant rides its seat (the server places it); a
-	// gunner's weapon works
+	// gunner's own weapon works (on a mounted gun the server keeps the fire
+	// button for the gun)
 	if ( pm->ps->pm_flags & PMF_OAX_VEHICLE ) {
 		PM_CheckDuck();
 		PM_DropTimers();

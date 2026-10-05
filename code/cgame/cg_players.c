@@ -2684,6 +2684,11 @@ void CG_Player(centity_t *cent) {
 	}
 	ci = &cgs.clientinfo[ clientNum ];
 
+	// oax: a driver inside a cockpit is not seen
+	if ( cent->currentState.number == clientNum && CG_OAXVehicleHidesPlayer( clientNum ) ) {
+		return;
+	}
+
 	// it is possible to see corpses from disconnected players that may
 	// not have valid clientinfo
 	if (!ci->infoValid) {

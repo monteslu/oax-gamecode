@@ -986,9 +986,10 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 			&& (cg_thirdPerson.integer || (cg.snap->ps.stats[STAT_HEALTH] <= 0));
 	}
 
-	// oax vehicles: a driver sees the vehicle from behind
-	if ( CG_OAXVehicleDriving() ) {
-		cg.renderingThirdPerson = qtrue;
+	// oax vehicles: first person from the seat or cockpit, or the chase
+	// camera (cg_oaxVehView, toggleview)
+	if ( CG_OAXVehicleCamera() >= 0 ) {
+		cg.renderingThirdPerson = CG_OAXVehicleCamera() == 1;
 	}
 
 	// build cg.refdef

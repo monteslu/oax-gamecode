@@ -54,10 +54,16 @@ with prediction on or off.
 - Seats: the use button (+button2) gets in (driver first, then gunner) and
   out. A driver steers with the movement keys or the left stick (forward
   = throttle, strafe = steer, jump = handbrake, crouch = brake); the
-  gunner stands on the rear deck and can shoot. Occupants carry the
-  PMF_OAX_VEHICLE flag (pmove does not move them, the gunner's weapon
-  works) and STAT_OAX_VEHICLE; their origin is the seat, rewritten after
-  every physics step.
+  gunner stands on the rear deck or the roof. Occupants carry the
+  PMF_OAX_VEHICLE flag (pmove does not move them) and STAT_OAX_VEHICLE;
+  their origin is the seat, rewritten after every physics step.
+- Mounted guns (bg_vehicleTypes: gunSeat, gun): the occupant of the gun
+  seat fires the vehicle's gun instead of its own weapon (G_VehGunThink, on
+  its command time), aimed with its view angles held to the gun's arc; a
+  heavy machine gun (hitscan, overheats), twin plasma guns or a cannon
+  (a heavy shell). The entity carries the shot count and the heat for the
+  cgame's flashes, sounds and HUD. A seat without the gun keeps its own
+  weapon (none of the stock types has one).
 - Solid (g_oaxVehSolid, a cheat cvar, 1): players collide with the
   vehicle's oriented box (BG_VehOBB through the engine's "ent_obb"), on
   the server and in the cgame's prediction alike: they cannot walk or fall
@@ -123,6 +129,12 @@ typedef struct {
 	int			awake;			/* the chassis moved last tick (the cgame wakes its copy) */
 	vec3_t		prevOrigin;		/* before the tick, for carrying riders */
 	vec3_t		prevAxis[3];
+	/* the mounted gun */
+	int			shots;			/* fired, ever (the entity's powerups) */
+	int			nextFire;		/* command time the gun may fire again */
+	int			gunTime;		/* command time of the heat below */
+	float		heat;			/* 0..1 */
+	int			overheated;
 } gVehicle_t;
 
 typedef struct {
@@ -145,7 +157,7 @@ static gVehClient_t	gVehClients[MAX_CLIENTS];
 static int			gVehWorld;
 static int			gVehSpawners;
 static vmCvar_t		g_oaxVehicles;
-static vmCvar_t		g_oaxVehLog;	/* 1: one console line per driven vehicle per frame (debugging) */
+static vmCvar_t		g_oaxVehLog;	/* 1: one console line per driven vehicle per frame, 2: and driver commands, 3: and gun commands (debugging) */
 static vmCvar_t		g_oaxVehSolid;	/* cheat: 0 = players pass through vehicles (test control) */
 static int			vehTerrainBodies;
 static int			vehWorldTime;	/* level time the world's state is at (a tick boundary) */
@@ -163,11 +175,13 @@ static int		vehInSolid, vehFell, vehFrames, vehDrivenFrames, vehBotDrivenFrames,
 static float	vehDistance, vehBotDistance, vehMinZ;
 static unsigned	vehHash;
 static unsigned	vehDriveHash;
+static int		vehGunShots, vehGunHits, vehGunOverheats;
 static int		vehCheckpointVeh;	/* the vehicle slot the drive checkpoints follow, -1 */	/* every driven vehicle's state, times relative to its first driver */
 static int		vehNextHashTime;
 
 static void G_VehAdvance( int cap );
 static int G_VehFrameMsec( void );
+static void G_VehGunThink( gVehicle_t *v, gentity_t *ent, usercmd_t *ucmd );
 
 int G_OAXVehiclesActive( void ) {
 	return gVehWorld != 0;
@@ -324,8 +338,16 @@ static void G_VehUpdateEntity( gVehicle_t *v ) {
 	ent->s.otherEntityNum = v->occupant[OAX_VEH_SEAT_DRIVER] >= 0 ? v->occupant[OAX_VEH_SEAT_DRIVER] : ENTITYNUM_NONE;
 	ent->s.otherEntityNum2 = v->occupant[OAX_VEH_SEAT_GUNNER] >= 0 ? v->occupant[OAX_VEH_SEAT_GUNNER] : ENTITYNUM_NONE;
 	ent->s.frame = ent->health > 0 ? ent->health * 100 / t->health : 0;
-	/* the gunner's own shots pass through the vehicle under them */
-	ent->r.ownerNum = v->occupant[OAX_VEH_SEAT_GUNNER] >= 0 ? v->occupant[OAX_VEH_SEAT_GUNNER] : ENTITYNUM_NONE;
+	/* the mounted gun: shots fired and heat */
+	ent->s.powerups = v->shots & 0xffff;
+	ent->s.clientNum = (int)( v->heat * 127.0f ) | ( v->overheated ? OAX_VEH_HEAT_LOCK : 0 );
+	/* the shots of whoever fires from it (the gun's user, else the
+	   gunner) pass through the vehicle under them */
+	i = BG_VehGunSeat( v->type );
+	if ( i < 0 || v->occupant[i] < 0 ) {
+		i = OAX_VEH_SEAT_GUNNER;
+	}
+	ent->r.ownerNum = i < t->numSeats && v->occupant[i] >= 0 ? v->occupant[i] : ENTITYNUM_NONE;
 
 	/* world box of the rotated chassis, wheels included, and of the
 	   collision box */
@@ -433,6 +455,128 @@ static void G_VehTakeInput( gVehicle_t *v, int target ) {
 		v->q[i - k - 1] = v->q[i];
 	}
 	v->qCount -= k + 1;
+}
+
+/* ---- the mounted gun --------------------------------------------------------------- */
+
+/* a heavy machine gun round: a hitscan line from the muzzle, as Bullet_Fire */
+static void G_VehGunBullet( gVehicle_t *v, gentity_t *ent, const bgVehicleGun_t *g, const vec3_t start, const vec3_t dir ) {
+	vec3_t end, right, up, aim;
+	trace_t tr;
+	gentity_t *tent, *hit;
+	int seed = v->shots * 7919 + v->ent->s.number;
+	float r, u, a;
+
+	PerpendicularVector( right, dir );
+	CrossProduct( dir, right, up );
+	a = Q_random( &seed ) * M_PI * 2;
+	r = Q_random( &seed ) * g->spread;
+	u = sin( a ) * r;
+	r = cos( a ) * r;
+	VectorMA( start, 8192, dir, end );
+	VectorMA( end, r, right, end );
+	VectorMA( end, u, up, end );
+	trap_Trace( &tr, start, NULL, NULL, end, ent->s.number, MASK_SHOT );
+	if ( tr.surfaceFlags & SURF_NOIMPACT ) {
+		return;
+	}
+	hit = &g_entities[tr.entityNum];
+	SnapVectorTowards( tr.endpos, (float *)start );
+	if ( hit->takedamage && hit->client ) {
+		tent = G_TempEntity( tr.endpos, EV_BULLET_HIT_FLESH );
+		tent->s.eventParm = hit->s.number;
+	} else {
+		tent = G_TempEntity( tr.endpos, EV_BULLET_HIT_WALL );
+		tent->s.eventParm = DirToByte( tr.plane.normal );
+	}
+	tent->s.otherEntityNum = ent->s.number;
+	if ( hit->takedamage ) {
+		VectorSubtract( end, start, aim );
+		VectorNormalize( aim );
+		G_Damage( hit, ent, ent, aim, tr.endpos, g->damage, 0, MOD_MACHINEGUN );
+		vehGunHits++;
+	}
+}
+
+/* the gun's user's command: cool down, aim, fire */
+static void G_VehGunThink( gVehicle_t *v, gentity_t *ent, usercmd_t *ucmd ) {
+	const bgVehicleType_t *t = BG_VehicleType( v->type );
+	const bgVehicleGun_t *g = BG_VehicleGun( t->gun );
+	int now = ucmd->serverTime;
+	vec3_t muzzle, dir, mount, start;
+	trace_t tr;
+	gentity_t *m;
+
+	/* the gun cools while its trigger is up (or while it is locked hot) */
+	if ( v->gunTime && now > v->gunTime && ( !( ucmd->buttons & BUTTON_ATTACK ) || v->overheated ) ) {
+		v->heat -= g->coolPerSec * ( now - v->gunTime ) * 0.001f;
+		if ( v->heat < 0 ) {
+			v->heat = 0;
+		}
+		if ( v->overheated && v->heat < g->cooledAt ) {
+			v->overheated = 0;
+		}
+	}
+	if ( now > v->gunTime ) {
+		v->gunTime = now;
+	}
+	if ( g_oaxVehLog.integer > 2 ) {
+		G_Printf( "vehgun %i lt %i next %i heat %.3f lock %i fire %i\n", now, level.time, v->nextFire, v->heat, v->overheated, ( ucmd->buttons & BUTTON_ATTACK ) != 0 );
+	}
+	if ( !( ucmd->buttons & BUTTON_ATTACK ) || v->overheated || now < v->nextFire ||
+		!BG_VehGunAim( v->type, v->state.origin, v->axis, ent->client->ps.viewangles, NULL, NULL, muzzle, dir ) ) {
+		return;
+	}
+	/* no banking shots across a pause in firing */
+	v->nextFire = ( v->nextFire > now - 50 ? v->nextFire : now ) + g->intervalMs;
+
+	/* from the mount out to the muzzle, so nothing fires through a wall */
+	BG_VehLocalToWorld( v->state.origin, v->axis, t->gunMount, mount );
+	if ( t->gun == OAX_VGUN_PLASMA ) {
+		/* the two guns in turn, either side of the mount */
+		VectorMA( mount, ( v->shots & 1 ) ? -14.0f : 14.0f, v->axis[1], mount );
+		VectorMA( muzzle, ( v->shots & 1 ) ? -14.0f : 14.0f, v->axis[1], muzzle );
+	}
+	trap_Trace( &tr, mount, NULL, NULL, muzzle, ent->s.number, MASK_SHOT );
+	VectorCopy( tr.endpos, start );
+	if ( tr.fraction < 1.0f ) {
+		VectorMA( start, -2, dir, start );
+	}
+
+	switch ( t->gun ) {
+	case OAX_VGUN_HMG:
+		G_VehGunBullet( v, ent, g, start, dir );
+		break;
+	case OAX_VGUN_PLASMA:
+		m = fire_plasma( ent, start, dir );
+		m->damage = g->damage;
+		break;
+	case OAX_VGUN_CANNON:
+		m = fire_rocket( ent, start, dir );
+		m->classname = "oax_shell";
+		m->damage = g->damage;
+		m->splashDamage = 100;
+		m->splashRadius = 170;
+		VectorScale( dir, 1800, m->s.pos.trDelta );
+		SnapVector( m->s.pos.trDelta );
+		break;
+	}
+	v->shots++;
+	vehGunShots++;
+	if ( v->occupant[OAX_VEH_SEAT_GUNNER] == ent->s.number ) {
+		vehGunnerShots++;
+	}
+	if ( g->heatPerShot > 0 ) {
+		v->heat += g->heatPerShot;
+		if ( v->heat >= 1.0f ) {
+			v->heat = 1.0f;
+			v->overheated = 1;
+			vehGunOverheats++;
+		}
+	}
+	/* the entity carries the shot count and heat (G_VehUpdateEntity) */
+	v->ent->s.powerups = v->shots & 0xffff;
+	v->ent->s.clientNum = (int)( v->heat * 127.0f ) | ( v->overheated ? OAX_VEH_HEAT_LOCK : 0 );
 }
 
 /* ---- seats ------------------------------------------------------------------------- */
@@ -609,6 +753,11 @@ void G_OAXVehicleClientThink( gentity_t *ent, usercmd_t *ucmd ) {
 			return;
 		}
 		ucmd->buttons &= ~BUTTON_USE_HOLDABLE;
+		if ( vc->seat == BG_VehGunSeat( v->type ) ) {
+			/* the mounted gun instead of the occupant's own weapon */
+			G_VehGunThink( v, ent, ucmd );
+			ucmd->buttons &= ~( BUTTON_ATTACK | BUTTON_GESTURE );
+		}
 		if ( vc->seat == OAX_VEH_SEAT_DRIVER ) {
 			if ( g_oaxVehLog.integer > 1 ) {
 				G_Printf( "vehcmd %i lt %i fm %i rm %i um %i\n", ucmd->serverTime, level.time, ucmd->forwardmove, ucmd->rightmove, ucmd->upmove );
@@ -784,7 +933,8 @@ static void G_VehSpawnerThink( gentity_t *spawner ) {
 
 /*QUAKED info_oax_vehicle (0 .5 1) (-16 -16 -16) (16 16 16)
 A vehicle spawner for the vehicle rule (g_oaxVehicles 1).
-"type"   buggy (two seats: driver and gunner) or hover (one seat)
+"type"   buggy or apc (two seats: driver and gunner, the gunner on the
+         machine gun), hover or hovertank (one seat: the driver fires)
 "angle"  facing
 "wait"   seconds before a destroyed vehicle comes back (20)
 The origin is the chassis center: put it a little above the ground.
@@ -811,6 +961,11 @@ void SP_info_oax_vehicle( gentity_t *ent ) {
 	G_ModelIndex( (char *)BG_VehicleType( type )->model );
 	if ( BG_VehicleType( type )->wheelModel[0] ) {
 		G_ModelIndex( (char *)BG_VehicleType( type )->wheelModel );
+	}
+	if ( BG_VehicleType( type )->gun == OAX_VGUN_PLASMA ) {
+		RegisterItem( BG_FindItemForWeapon( WP_PLASMAGUN ) );	/* the bolts' models and sounds */
+	} else if ( BG_VehicleType( type )->gun == OAX_VGUN_CANNON ) {
+		RegisterItem( BG_FindItemForWeapon( WP_ROCKET_LAUNCHER ) );
 	}
 	gVehSpawners++;
 }
@@ -1271,6 +1426,9 @@ static void G_VehPublish( void ) {
 	BG_OAXDebugSetInt( "g_veh_late_cmds", vehLateCmds );
 	BG_OAXDebugSetInt( "g_veh_crashes", vehCrashes );
 	BG_OAXDebugSetInt( "g_veh_gunner_shots", vehGunnerShots );
+	BG_OAXDebugSetInt( "g_veh_gun_shots", vehGunShots );
+	BG_OAXDebugSetInt( "g_veh_gun_hits", vehGunHits );
+	BG_OAXDebugSetInt( "g_veh_gun_overheats", vehGunOverheats );
 	/* the first client: vehicle, seat, weapon, its ammo (seat tests) */
 	if ( g_entities[0].inuse && g_entities[0].client ) {
 		gclient_t *cl = g_entities[0].client;
@@ -1309,9 +1467,9 @@ static void G_VehPublish( void ) {
 	for ( i = 0, k = 0; i < VEH_MAX && k < 4; i++ ) {
 		gVehicle_t *v = &gVehicles[i];
 		if ( v->inuse && !v->dying ) {
-			BG_OAXDebugSet( va( "g_veh%i", k ), va( "%i %.2f %.2f %.2f %.2f %.1f %i %i", v->ent->s.number,
+			BG_OAXDebugSet( va( "g_veh%i", k ), va( "%i %.2f %.2f %.2f %.2f %.1f %i %i %s", v->ent->s.number,
 				v->state.origin[0], v->state.origin[1], v->state.origin[2], v->state.speed, v->state.distance,
-				v->state.contacts, v->ent->health ) );
+				v->state.contacts, v->ent->health, BG_VehicleType( v->type )->name ) );
 			/* bit-exact state for identity checks (impulse test) */
 			BG_OAXDebugSet( va( "g_veh%i_exact", k ), va( "%.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %i", v->state.origin[0], v->state.origin[1], v->state.origin[2],
 				v->state.velocity[0], v->state.velocity[1], v->state.velocity[2],
@@ -1394,8 +1552,8 @@ void G_OAXVehicleFrame( void ) {
 			if ( v->occupant[s] >= 0 ) {
 				gclient_t *cl = g_entities[v->occupant[s]].client;
 				G_VehPlaceOccupant( v, s, &g_entities[v->occupant[s]] );
-				/* shots fired from the gunner seat */
-				if ( s == OAX_VEH_SEAT_GUNNER ) {
+				/* the gunner's own weapon fired from a seat without a gun */
+				if ( s == OAX_VEH_SEAT_GUNNER && BG_VehGunSeat( v->type ) != s ) {
 					int ammo = cl->ps.ammo[cl->ps.weapon];
 					if ( vehGunAmmo[v->occupant[s]] > ammo ) {
 						vehGunnerShots += vehGunAmmo[v->occupant[s]] - ammo;
@@ -1420,6 +1578,7 @@ void G_OAXVehicleInit( void ) {
 	trap_Cvar_Register( &g_oaxVehLog, "g_oaxVehLog", "0", 0 );
 	trap_Cvar_Register( &g_oaxVehSolid, "g_oaxVehSolid", "1", CVAR_CHEAT );
 	vehLateCmds = vehCmdLagMax = vehCrashes = vehGunnerShots = 0;
+	vehGunShots = vehGunHits = vehGunOverheats = 0;
 	vehAheadCmds = vehHeldTicks = vehImpulseCount = vehCarried = vehPushed = vehBlockedPush = 0;
 	vehImpulseTotal = 0;
 	vehNumImpulses = 0;
@@ -1500,6 +1659,61 @@ void G_OAXVehSeat_f( void ) {
 	if ( best ) {
 		G_VehEnter( best, seat, ent, level.time );
 	}
+}
+
+/*
+=================
+G_OAXVehAim_f
+
+vehaim <client> <pitch> <yaw>: turn a client's view to these angles (as a
+teleporter does); vehaim <client> veh <n>: turn it so its mounted gun (or
+its eye, off the gun) points at the n-th vehicle's centre (server console;
+tests: aiming a mounted gun the same way on every build).
+=================
+*/
+void G_OAXVehAim_f( void ) {
+	char arg[32];
+	vec3_t angles, from, d;
+	gentity_t *ent;
+	int cn;
+
+	if ( trap_Argc() < 4 ) {
+		G_Printf( "usage: vehaim <client> <pitch> <yaw> | vehaim <client> veh <n>\n" );
+		return;
+	}
+	trap_Argv( 1, arg, sizeof( arg ) );
+	cn = atoi( arg );
+	if ( cn < 0 || cn >= level.maxclients ) {
+		return;
+	}
+	ent = &g_entities[cn];
+	if ( !ent->inuse || !ent->client ) {
+		return;
+	}
+	trap_Argv( 2, arg, sizeof( arg ) );
+	if ( !Q_stricmp( arg, "veh" ) ) {
+		gentity_t *target;
+		gVehClient_t *vc = &gVehClients[cn];
+		trap_Argv( 3, arg, sizeof( arg ) );
+		target = G_OAXVehicleEnt( atoi( arg ) );
+		if ( !target ) {
+			return;
+		}
+		VectorCopy( ent->client->ps.origin, from );
+		from[2] += ent->client->ps.viewheight;
+		if ( vc->veh >= 0 && BG_VehGunSeat( gVehicles[vc->veh].type ) == vc->seat ) {
+			gVehicle_t *v = &gVehicles[vc->veh];
+			BG_VehLocalToWorld( v->state.origin, v->axis, BG_VehicleType( v->type )->gunMount, from );
+		}
+		VectorSubtract( target->r.currentOrigin, from, d );
+		vectoangles( d, angles );
+	} else {
+		angles[PITCH] = atof( arg );
+		trap_Argv( 3, arg, sizeof( arg ) );
+		angles[YAW] = atof( arg );
+	}
+	angles[ROLL] = 0;
+	SetClientViewAngle( ent, angles );
 }
 
 /*

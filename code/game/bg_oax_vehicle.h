@@ -84,7 +84,53 @@ typedef struct {
 	int			mirrorLeftWheels;	/* one wheel model for both sides: turn the +y ones round */
 	int			rearSteer;			/* the rear pair (wheels 2, 3) steers opposite the front:
 									   a long six-wheeler turns about its middle axle */
+	/* the mounted gun: fired by the occupant of gunSeat (-1 none), aimed
+	   with that occupant's view angles within the limits below (degrees,
+	   relative to the hull); the shot leaves the muzzle, gunMuzzle units
+	   along the aim from the mount (the yaw pivot, body space) */
+	int			gunSeat;
+	int			gun;				/* OAX_VGUN_* */
+	float		gunMount[3];
+	float		gunMuzzle;
+	float		gunYawArc;			/* 180: all round; else +- this from straight ahead */
+	float		gunPitchUp, gunPitchDown;
+	const char	*gunModel;			/* turns with the aim's yaw (and pitch, without a barrel model) */
+	const char	*gunBarrelModel;	/* pitches about gunBarrelPivot (gun space); "" none */
+	float		gunBarrelPivot[3];
+	float		gunScale;
+	float		gunModelOffset[3];	/* the gun model's origin in gun space (its barrels on the aim line) */
+	/* the driver sits inside (hidden from everyone, out of reach of shots)
+	   and sees out from the eye (body space; with the driver's gun, the eye
+	   is in gun space and turns with the aim); the default view is this
+	   first-person one rather than the chase camera */
+	int			cockpit;
+	float		eye[3];
+	const char	*label;				/* the HUD's name for it */
 } bgVehicleType_t;
+
+/* mounted guns */
+#define OAX_VGUN_NONE		0
+#define OAX_VGUN_HMG		1	/* a heavy machine gun: hitscan, overheats */
+#define OAX_VGUN_PLASMA		2	/* twin plasma bolts, from either side of the mount */
+#define OAX_VGUN_CANNON		3	/* a heavy shell with splash damage, slow to reload */
+
+typedef struct {
+	int			intervalMs;			/* between shots */
+	int			damage;
+	float		spread;				/* hitscan: spread at 8192 units */
+	float		heatPerShot;		/* 0: never overheats */
+	float		coolPerSec;
+	float		cooledAt;			/* an overheated gun fires again below this */
+	const char	*fireSound;
+	const char	*flashModel;
+	float		flashColor[3];
+} bgVehicleGun_t;
+
+const bgVehicleGun_t *BG_VehicleGun( int gun );
+
+/* the entity carries the gun's state: shots fired (powerups, wraps at
+   65536) and heat (clientNum: 0-127, +128 while overheated) */
+#define OAX_VEH_HEAT_LOCK	128
 
 extern const bgVehicleType_t bg_vehicleTypes[OAX_VEH_NUM_TYPES];
 
@@ -96,6 +142,13 @@ int		BG_VehicleTypeByName( const char *name );		/* -1 if unknown */
 void	BG_VehAxisToAngles( vec3_t axis[3], vec3_t angles );
 /* a body-space point to world space */
 void	BG_VehLocalToWorld( const vec3_t origin, vec3_t axis[3], const vec3_t local, vec3_t out );
+/* the mounted gun's aim from its user's view angles, held to the type's
+   limits: yaw and pitch relative to the hull (degrees; pitch up positive),
+   the muzzle and the direction of the shot in the world; qfalse without a gun */
+qboolean BG_VehGunAim( int type, const vec3_t origin, vec3_t axis[3], const vec3_t viewangles,
+	float *yawRel, float *pitchRel, vec3_t muzzle, vec3_t dir );
+/* the seat whose occupant fires the gun, -1 none */
+int		BG_VehGunSeat( int type );
 
 /* the rest needs the physics ABI (oax_phys.h, via bg_oax_phys.h) */
 #ifdef OAX_PHYS_H

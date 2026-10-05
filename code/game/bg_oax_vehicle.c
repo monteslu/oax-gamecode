@@ -50,7 +50,13 @@ const bgVehicleType_t bg_vehicleTypes[OAX_VEH_NUM_TYPES] = {
 		2, { { 6, 16, 24 }, { -40, 0, 38 } },
 		450,
 		"models/oax/vehicles/buggy.md3", "models/oax/vehicles/wheel.md3",
-		{ 72, 46, 30 }, { 0, 0, -16 }	/* deck at +14, down to the wheels' bottoms */
+		{ 72, 46, 30 }, { 0, 0, -16 },	/* deck at +14, down to the wheels' bottoms */
+		0, 0,
+		/* a heavy machine gun the gunner holds, its barrels a hand below the eye */
+		OAX_VEH_SEAT_GUNNER, OAX_VGUN_HMG, { -34, 0, 50 }, 52, 180, 50, 25,
+		"models/weapons/vulcan/vulcan.md3", "", { 0, 0, 0 }, 1.6f, { 0, 0, -8.6f },
+		0, { 0, 0, 0 },
+		"BUGGY"
 	},
 	{
 		"hover", VEH_HOVER,
@@ -67,7 +73,13 @@ const bgVehicleType_t bg_vehicleTypes[OAX_VEH_NUM_TYPES] = {
 		1, { { -8, 0, 34 }, { 0, 0, 0 } },
 		300,
 		"models/oax/vehicles/hover.md3", "",
-		{ 64, 36, 10 }, { 0, 0, 0 }
+		{ 64, 36, 10 }, { 0, 0, 0 },
+		0, 0,
+		/* twin plasma guns in the nose, aimed a little either way */
+		OAX_VEH_SEAT_DRIVER, OAX_VGUN_PLASMA, { 56, 0, 0 }, 16, 15, 15, 15,
+		"", "", { 0, 0, 0 }, 1, { 0, 0, 0 },
+		0, { 0, 0, 0 },
+		"HOVER"
 	},
 	{
 		/* a six-wheeled armoured carrier: slower, heavier, driver and a
@@ -88,7 +100,13 @@ const bgVehicleType_t bg_vehicleTypes[OAX_VEH_NUM_TYPES] = {
 		900,
 		"models/oax/vehicles/apc.md3", "models/oax/vehicles/apc_wheel.md3",
 		{ 115, 63, 44 }, { 0, 0, -8 },	/* hull top at +36, down to the wheels' bottoms */
-		1, 1
+		1, 1,
+		/* a heavy machine gun on the roof, held by the gunner as on the buggy */
+		OAX_VEH_SEAT_GUNNER, OAX_VGUN_HMG, { -14, 0, 82 }, 52, 180, 50, 25,
+		"models/weapons/vulcan/vulcan.md3", "", { 0, 0, 0 }, 1.6f, { 0, 0, -8.6f },
+		/* the driver behind the armour, looking out over the bow */
+		1, { 10, 0, 38 },
+		"APC"
 	},
 	{
 		/* an armoured hover tank: the turret is part of the model */
@@ -106,9 +124,88 @@ const bgVehicleType_t bg_vehicleTypes[OAX_VEH_NUM_TYPES] = {
 		1, { { -10, 0, 34 }, { 0, 0, 0 } },
 		600,
 		"models/oax/vehicles/hovertank.md3", "",
-		{ 78, 43, 18 }, { 0, 0, 6 }
+		{ 78, 43, 18 }, { 0, 0, 6 },
+		0, 0,
+		/* the turret's cannon: the turret turns about its centre, the barrel
+		   pitches at the turret's front (models/oax/vehicles: the source
+		   model's turret and barrel split out, each origin at its pivot) */
+		OAX_VEH_SEAT_DRIVER, OAX_VGUN_CANNON, { -35, 0, 18 }, 104, 180, 25, 8,
+		"models/oax/vehicles/hovertank_turret.md3", "models/oax/vehicles/hovertank_barrel.md3", { 16, 0, 0 }, 1, { 0, 0, 0 },
+		/* the driver inside, sighting over the turret roof */
+		1, { -6, 0, 13 },
+		"HOVERTANK"
 	}
 };
+
+static const bgVehicleGun_t bg_vehicleGuns[] = {
+	{ 0 },
+	/* OAX_VGUN_HMG */
+	{ 75, 12, 260, 0.03f, 0.45f, 0.35f, "sound/weapons/vulcan/vulcanf1b.wav",
+		"models/weapons/vulcan/vulcan_flash.md3", { 1, 0.75f, 0.3f } },
+	/* OAX_VGUN_PLASMA */
+	{ 110, 20, 0, 0, 0, 0, "sound/weapons/plasma/hyprbf1a.wav",
+		"models/weapons2/plasma/plasma_flash.md3", { 0.6f, 0.6f, 1 } },
+	/* OAX_VGUN_CANNON */
+	{ 1100, 120, 0, 0, 0, 0, "sound/weapons/rocket/rocklf1a.wav",
+		"models/weapons2/rocketl/rocketl_flash.md3", { 1, 0.7f, 0.3f } },
+};
+
+const bgVehicleGun_t *BG_VehicleGun( int gun ) {
+	if ( gun < 0 || gun >= (int)( sizeof( bg_vehicleGuns ) / sizeof( bg_vehicleGuns[0] ) ) ) {
+		return &bg_vehicleGuns[0];
+	}
+	return &bg_vehicleGuns[gun];
+}
+
+int BG_VehGunSeat( int type ) {
+	const bgVehicleType_t *t = BG_VehicleType( type );
+	return t->gun != OAX_VGUN_NONE ? t->gunSeat : -1;
+}
+
+qboolean BG_VehGunAim( int type, const vec3_t origin, vec3_t axis[3], const vec3_t viewangles,
+	float *yawRel, float *pitchRel, vec3_t muzzle, vec3_t dir ) {
+	const bgVehicleType_t *t = BG_VehicleType( type );
+	vec3_t fwd, mount;
+	float lx, ly, lz, yaw, pitch, cy, sy, cp, sp;
+	int i;
+
+	if ( t->gun == OAX_VGUN_NONE ) {
+		return qfalse;
+	}
+	/* the view direction in body space */
+	AngleVectors( viewangles, fwd, NULL, NULL );
+	lx = DotProduct( fwd, axis[0] );
+	ly = DotProduct( fwd, axis[1] );
+	lz = DotProduct( fwd, axis[2] );
+	yaw = atan2( ly, lx ) * ( 180.0f / M_PI );
+	pitch = atan2( lz, sqrt( lx * lx + ly * ly ) ) * ( 180.0f / M_PI );
+	if ( yaw > t->gunYawArc ) {
+		yaw = t->gunYawArc;
+	} else if ( yaw < -t->gunYawArc ) {
+		yaw = -t->gunYawArc;
+	}
+	if ( pitch > t->gunPitchUp ) {
+		pitch = t->gunPitchUp;
+	} else if ( pitch < -t->gunPitchDown ) {
+		pitch = -t->gunPitchDown;
+	}
+	cy = cos( DEG2RAD( yaw ) );
+	sy = sin( DEG2RAD( yaw ) );
+	cp = cos( DEG2RAD( pitch ) );
+	sp = sin( DEG2RAD( pitch ) );
+	for ( i = 0; i < 3; i++ ) {
+		dir[i] = cp * cy * axis[0][i] + cp * sy * axis[1][i] + sp * axis[2][i];
+	}
+	BG_VehLocalToWorld( origin, axis, t->gunMount, mount );
+	VectorMA( mount, t->gunMuzzle, dir, muzzle );
+	if ( yawRel ) {
+		*yawRel = yaw;
+	}
+	if ( pitchRel ) {
+		*pitchRel = pitch;
+	}
+	return qtrue;
+}
 
 const bgVehicleType_t *BG_VehicleType( int type ) {
 	if ( type < 0 || type >= OAX_VEH_NUM_TYPES ) {

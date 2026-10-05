@@ -50,8 +50,22 @@ server state: max and mean distance; corrections: count, per second, max
 and mean; snaps; tracking: how far what was drawn at a command time was
 from the server's vehicle at that time, max and mean).
 
-A driver sees the vehicle from a chase camera that orbits with the view
-angles; a gunner looks out from the seat.
+Views (cg_oaxVehView, the toggleview command): first person looks out
+from the seat, or from the cockpit of a vehicle that has one (its driver
+sits inside: hidden, the eye in the type table); third person is a chase
+camera behind the vehicle. By default the driver of a cockpit vehicle and
+every gunner see first person, the driver of an open vehicle the chase
+camera. Whoever fires the vehicle's mounted gun aims it with the view
+(the camera orbits with the aim, the gun turns to it within its limits,
+and the vehicle steers on its own). A seat without the gun looks around
+freely relative to the hull, and the view swings back behind the vehicle
+when the stick is let go.
+
+Mounted guns: drawn at their mount turned to the aim of whoever fires
+them; the entity's shot count (powerups) flashes the muzzle and plays the
+shot, its heat (clientNum) shows on the gun user's HUD. The gun user's
+reticle is where the gun's line meets the world, not the middle of the
+screen (the camera and the muzzle see from different places).
 ===========================================================================
 */
 #include "cg_local.h"
@@ -74,6 +88,33 @@ static vmCvar_t	cg_oaxVehErrorDecay;
 static vmCvar_t	cg_oaxVehSnap;
 static vmCvar_t	cg_oaxVehHud;
 static vmCvar_t	cg_oaxVehClip;	/* 0: prediction ignores vehicles (a test control: mispredicts) */
+static vmCvar_t	cg_oaxVehView;	/* 0: by seat, 1: first person, 2: third person */
+static vmCvar_t	cg_oaxVehLookReturn;	/* ms without look input before a free look swings back */
+
+/* each type's gun models and sound, registered once a map has the type */
+typedef struct {
+	qboolean	loaded;
+	qhandle_t	gun, barrel, spin, flash;
+	sfxHandle_t	fire;
+} cgVehAssets_t;
+
+static cgVehAssets_t	vehAssets[OAX_VEH_NUM_TYPES];
+
+/* each vehicle entity's gun as drawn */
+typedef struct {
+	int			shots;			/* the entity's shot count last seen */
+	int			seen;
+	int			flashTime;		/* cg.time of the last shot */
+	int			locked;			/* the heat's lock bit last seen */
+	float		spin;			/* barrel roll, degrees */
+} cgVehGun_t;
+
+static cgVehGun_t	vehGun[MAX_GENTITIES];
+static int			vehLocksSeen;	/* guns seen going into the overheat lock (tests) */
+
+/* the free look of a seat without the gun: offset from the hull */
+static vec3_t	vehLook, vehLastView;
+static int		vehLookTime, vehLookVeh = -1, vehLookSeat = -1;
 
 typedef struct {
 	int			world;			/* the prediction world, 0 = not made yet */
@@ -110,17 +151,64 @@ static cgVehPred_t	vp;
 static vec3_t		cgVehSavedOrigin;
 static int			cgVehSaved;
 
+static void CG_VehRegister( int type ) {
+	const bgVehicleType_t *t = BG_VehicleType( type );
+	const bgVehicleGun_t *g = BG_VehicleGun( t->gun );
+	cgVehAssets_t *a = &vehAssets[type < 0 || type >= OAX_VEH_NUM_TYPES ? 0 : type];
+
+	if ( a->loaded ) {
+		return;
+	}
+	a->loaded = qtrue;
+	if ( t->gun == OAX_VGUN_NONE ) {
+		return;
+	}
+	if ( t->gunModel[0] ) {
+		a->gun = trap_R_RegisterModel( t->gunModel );
+	}
+	if ( t->gunBarrelModel[0] ) {
+		a->barrel = trap_R_RegisterModel( t->gunBarrelModel );
+	}
+	if ( t->gun == OAX_VGUN_HMG ) {
+		a->spin = trap_R_RegisterModel( "models/weapons/vulcan/vulcan_barrel.md3" );
+	}
+	a->flash = trap_R_RegisterModel( g->flashModel );
+	a->fire = trap_S_RegisterSound( g->fireSound, qfalse );
+}
+
 void CG_OAXVehicleInit( void ) {
 	trap_Cvar_Register( &cg_oaxVehPredict, "cg_oaxVehPredict", "1", CVAR_ARCHIVE );
 	trap_Cvar_Register( &cg_oaxVehErrorDecay, "cg_oaxVehErrorDecay", "150", CVAR_ARCHIVE );
 	trap_Cvar_Register( &cg_oaxVehSnap, "cg_oaxVehSnap", "96", CVAR_ARCHIVE );
 	trap_Cvar_Register( &cg_oaxVehHud, "cg_oaxVehHud", "1", CVAR_ARCHIVE );
 	trap_Cvar_Register( &cg_oaxVehClip, "cg_oaxVehClip", "1", CVAR_CHEAT );
+	trap_Cvar_Register( &cg_oaxVehView, "cg_oaxVehView", "0", CVAR_ARCHIVE );
+	trap_Cvar_Register( &cg_oaxVehLookReturn, "cg_oaxVehLookReturn", "800", CVAR_ARCHIVE );
 	/* the engine dropped the cgame's worlds with the VM */
 	memset( &vp, 0, sizeof( vp ) );
 	vp.baseTime = -1;
 	vp.lastServerTime = -1;
 	cgVehSaved = 0;
+	memset( vehAssets, 0, sizeof( vehAssets ) );
+	memset( vehGun, 0, sizeof( vehGun ) );
+	vehLocksSeen = 0;
+	vehLookVeh = vehLookSeat = -1;
+	/* the guns of the types this map has (their models are in the
+	   configstrings: the spawners register them) */
+	{
+		int i, k;
+		for ( i = 1; i < MAX_MODELS; i++ ) {
+			const char *m = CG_ConfigString( CS_MODELS + i );
+			if ( !m[0] ) {
+				break;
+			}
+			for ( k = 0; k < OAX_VEH_NUM_TYPES; k++ ) {
+				if ( !Q_stricmp( m, bg_vehicleTypes[k].model ) ) {
+					CG_VehRegister( k );
+				}
+			}
+		}
+	}
 }
 
 /* the vehicle entity's origin and angles at cg.time (interpolated) */
@@ -184,10 +272,70 @@ static int CG_VehSeat( int *seat ) {
 	return num;
 }
 
-/* the driver's chase camera is a third-person view */
+/* the local player drives */
 qboolean CG_OAXVehicleDriving( void ) {
 	int seat = 0;
 	return CG_VehSeat( &seat ) >= 0 && seat == OAX_VEH_SEAT_DRIVER;
+}
+
+/* this seat's view: first person (qtrue) or the chase camera */
+static qboolean CG_VehFirstPerson( int type, int seat ) {
+	trap_Cvar_Update( &cg_oaxVehView );
+	if ( cg_oaxVehView.integer == 1 ) {
+		return qtrue;
+	}
+	if ( cg_oaxVehView.integer == 2 ) {
+		return qfalse;
+	}
+	return seat != OAX_VEH_SEAT_DRIVER || BG_VehicleType( type )->cockpit;
+}
+
+/* before the view is built: -1 on foot, else 1 for the chase camera, 0 first person */
+int CG_OAXVehicleCamera( void ) {
+	int seat = 0, num = CG_VehSeat( &seat );
+
+	if ( num < 0 ) {
+		return -1;
+	}
+	return CG_VehFirstPerson( cg_entities[num].currentState.generic1, seat ) ? 0 : 1;
+}
+
+/*
+=================
+CG_OAXToggleView_f
+
+toggleview: in a vehicle, first person and the chase camera
+(cg_oaxVehView); on foot, cg_thirdPerson.
+=================
+*/
+void CG_OAXToggleView_f( void ) {
+	int seat = 0, num = CG_VehSeat( &seat );
+
+	if ( num < 0 ) {
+		trap_Cvar_Set( "cg_thirdPerson", cg_thirdPerson.integer ? "0" : "1" );
+		return;
+	}
+	trap_Cvar_Set( "cg_oaxVehView", CG_VehFirstPerson( cg_entities[num].currentState.generic1, seat ) ? "2" : "1" );
+}
+
+/* a player not to draw: the driver inside a cockpit */
+qboolean CG_OAXVehicleHidesPlayer( int clientNum ) {
+	int i, seat = 0, num;
+
+	if ( clientNum < 0 || clientNum >= MAX_CLIENTS || !cg.snap ) {
+		return qfalse;
+	}
+	if ( clientNum == cg.predictedPlayerState.clientNum ) {
+		num = CG_VehSeat( &seat );
+		return num >= 0 && seat == OAX_VEH_SEAT_DRIVER && BG_VehicleType( cg_entities[num].currentState.generic1 )->cockpit;
+	}
+	for ( i = 0; i < cg.snap->numEntities; i++ ) {
+		const entityState_t *es = &cg.snap->entities[i];
+		if ( es->eType == ET_OAX_VEHICLE && es->otherEntityNum == clientNum ) {
+			return BG_VehicleType( es->generic1 )->cockpit;
+		}
+	}
+	return qfalse;
 }
 
 /*
@@ -568,6 +716,161 @@ static void CG_VehGroundFx( centity_t *cent, refEntity_t *ent, const bgVehicleTy
 	}
 }
 
+/* the view angles that aim a vehicle's gun: its user's (the local
+   player's own as predicted), NULL when nobody is on the gun seat */
+static const float *CG_VehGunUserAngles( const entityState_t *s ) {
+	int seat = BG_VehGunSeat( s->generic1 ), user;
+
+	if ( seat < 0 ) {
+		return NULL;
+	}
+	user = seat == OAX_VEH_SEAT_DRIVER ? s->otherEntityNum : s->otherEntityNum2;
+	if ( user < 0 || user >= MAX_CLIENTS ) {
+		return NULL;
+	}
+	if ( user == cg.predictedPlayerState.clientNum ) {
+		return cg.predictedPlayerState.viewangles;
+	}
+	if ( !cg_entities[user].currentValid ) {
+		return NULL;
+	}
+	return cg_entities[user].lerpAngles;
+}
+
+/* the gun's aim on a hull as drawn; resting straight ahead without a user */
+static qboolean CG_VehGunPose( const entityState_t *s, const vec3_t origin, vec3_t axis[3], float *yaw, float *pitch, vec3_t muzzle, vec3_t dir ) {
+	const float *view = CG_VehGunUserAngles( s );
+	vec3_t rest;
+
+	if ( !view ) {
+		vectoangles( axis[0], rest );
+		view = rest;
+	}
+	return BG_VehGunAim( s->generic1, origin, axis, view, yaw, pitch, muzzle, dir );
+}
+
+static void CG_VehScaleAxis( refEntity_t *e, float scale ) {
+	if ( scale != 1.0f ) {
+		VectorScale( e->axis[0], scale, e->axis[0] );
+		VectorScale( e->axis[1], scale, e->axis[1] );
+		VectorScale( e->axis[2], scale, e->axis[2] );
+		e->nonNormalizedAxes = qtrue;
+	}
+}
+
+/* the mounted gun: the model at its mount turned to the aim, the muzzle
+   flash and the shot's sound when the shot count moves */
+static void CG_VehGun( centity_t *cent, const refEntity_t *hull, const bgVehicleType_t *t ) {
+	entityState_t *s = &cent->currentState;
+	const bgVehicleGun_t *g = BG_VehicleGun( t->gun );
+	cgVehAssets_t *a;
+	cgVehGun_t *vg = &vehGun[s->number];
+	refEntity_t gun, part, flash;
+	vec3_t muzzle, dir, local, ang, axis[3];
+	float yaw, pitch;
+	qboolean fired = qfalse;
+
+	if ( t->gun == OAX_VGUN_NONE || !CG_VehGunPose( s, hull->origin, (vec3_t *)hull->axis, &yaw, &pitch, muzzle, dir ) ) {
+		return;
+	}
+	CG_VehRegister( s->generic1 );
+	a = &vehAssets[s->generic1];
+
+	/* a new shot (not on first sight: a count that was already there) */
+	if ( !vg->seen || cg.time < vg->flashTime ) {
+		vg->seen = 1;
+		vg->shots = s->powerups;
+		vg->flashTime = -100000;
+	} else if ( s->powerups != vg->shots ) {
+		vg->shots = s->powerups;
+		vg->flashTime = cg.time;
+		fired = qtrue;
+	}
+	if ( ( s->clientNum & OAX_VEH_HEAT_LOCK ) && !vg->locked ) {
+		vehLocksSeen++;
+		BG_OAXDebugSetInt( "cg_veh_gun_locks", vehLocksSeen );
+	}
+	vg->locked = ( s->clientNum & OAX_VEH_HEAT_LOCK ) != 0;
+
+	memset( &gun, 0, sizeof( gun ) );
+	BG_VehLocalToWorld( hull->origin, (vec3_t *)hull->axis, t->gunMount, gun.origin );
+	VectorCopy( gun.origin, gun.oldorigin );
+	VectorCopy( hull->origin, gun.lightingOrigin );
+	/* with a barrel model the gun only turns; the barrel pitches */
+	ang[PITCH] = a->barrel ? 0 : -pitch;
+	ang[YAW] = yaw;
+	ang[ROLL] = 0;
+	AnglesToAxis( ang, axis );
+	MatrixMultiply( axis, (vec3_t *)hull->axis, gun.axis );
+	gun.renderfx = RF_MINLIGHT | RF_LIGHTING_ORIGIN;
+	if ( a->gun ) {
+		gun.hModel = a->gun;
+		BG_VehLocalToWorld( gun.origin, gun.axis, t->gunModelOffset, gun.origin );
+		VectorCopy( gun.origin, gun.oldorigin );
+		CG_VehScaleAxis( &gun, t->gunScale );
+		trap_R_AddRefEntityToScene( &gun );
+	}
+	if ( a->barrel ) {
+		memset( &part, 0, sizeof( part ) );
+		local[0] = t->gunBarrelPivot[0];
+		local[1] = t->gunBarrelPivot[1];
+		local[2] = t->gunBarrelPivot[2];
+		BG_VehLocalToWorld( gun.origin, gun.axis, local, part.origin );
+		VectorCopy( part.origin, part.oldorigin );
+		VectorCopy( hull->origin, part.lightingOrigin );
+		ang[PITCH] = -pitch;
+		ang[YAW] = 0;
+		AnglesToAxis( ang, axis );
+		MatrixMultiply( axis, gun.axis, part.axis );
+		part.hModel = a->barrel;
+		part.renderfx = RF_MINLIGHT | RF_LIGHTING_ORIGIN;
+		trap_R_AddRefEntityToScene( &part );
+	}
+	if ( a->spin && a->gun ) {
+		/* the heavy machine gun's barrels spin while it fires */
+		if ( cg.time - vg->flashTime < 300 ) {
+			vg->spin = AngleMod( vg->spin + cg.frametime * 1.2f );
+		}
+		memset( &part, 0, sizeof( part ) );
+		ang[PITCH] = 0;
+		ang[YAW] = 0;
+		ang[ROLL] = vg->spin;
+		AnglesToAxis( ang, part.axis );
+		part.hModel = a->spin;
+		part.renderfx = RF_MINLIGHT | RF_LIGHTING_ORIGIN;
+		VectorCopy( hull->origin, part.lightingOrigin );
+		CG_PositionRotatedEntityOnTag( &part, &gun, a->gun, "tag_barrel" );
+		part.nonNormalizedAxes = gun.nonNormalizedAxes;
+		trap_R_AddRefEntityToScene( &part );
+	}
+
+	/* the flash: at the muzzle, along the shot (the plasma guns alternate) */
+	if ( t->gun == OAX_VGUN_PLASMA ) {
+		VectorMA( muzzle, ( ( vg->shots - 1 ) & 1 ) ? -14.0f : 14.0f, hull->axis[1], muzzle );
+	}
+	if ( fired && a->fire ) {
+		trap_S_StartSound( muzzle, ENTITYNUM_WORLD, CHAN_AUTO, a->fire );
+	}
+	if ( cg.time - vg->flashTime < 60 && a->flash ) {
+		memset( &flash, 0, sizeof( flash ) );
+		if ( a->spin && a->gun ) {
+			AxisClear( flash.axis );
+			CG_PositionRotatedEntityOnTag( &flash, &gun, a->gun, "tag_flash" );
+			flash.nonNormalizedAxes = gun.nonNormalizedAxes;
+		} else {
+			vectoangles( dir, ang );
+			ang[ROLL] = crandom() * 20;
+			AnglesToAxis( ang, flash.axis );
+			VectorCopy( muzzle, flash.origin );
+			CG_VehScaleAxis( &flash, t->gun == OAX_VGUN_CANNON ? 2.5f : 1.2f );
+		}
+		VectorCopy( flash.origin, flash.oldorigin );
+		flash.hModel = a->flash;
+		trap_R_AddRefEntityToScene( &flash );
+		trap_R_AddLightToScene( muzzle, t->gun == OAX_VGUN_CANNON ? 300 : 180, g->flashColor[0], g->flashColor[1], g->flashColor[2] );
+	}
+}
+
 void CG_OAXVehicle( centity_t *cent ) {
 	entityState_t *s = &cent->currentState;
 	const bgVehicleType_t *t = BG_VehicleType( s->generic1 );
@@ -652,6 +955,7 @@ void CG_OAXVehicle( centity_t *cent ) {
 	}
 
 	CG_VehGroundFx( cent, &ent, t, susp );
+	CG_VehGun( cent, &ent, t );
 
 	/* damaged: smoke */
 	if ( s->frame < 40 && ( cg.time / 120 ) != ( ( cg.time - cg.frametime ) / 120 ) ) {
@@ -662,24 +966,79 @@ void CG_OAXVehicle( centity_t *cent ) {
 	}
 }
 
+/* a seat without the gun: the view's turns since last frame move a free
+   look relative to the hull, which swings back once the stick rests */
+static void CG_VehFreeLook( int num, int seat, float yawLimit ) {
+	const float *v = cg.predictedPlayerState.viewangles;
+	float k;
+
+	if ( num != vehLookVeh || seat != vehLookSeat ) {
+		VectorClear( vehLook );
+		vehLookVeh = num;
+		vehLookSeat = seat;
+		vehLookTime = 0;
+	} else {
+		float dy = AngleSubtract( v[YAW], vehLastView[YAW] ), dp = AngleSubtract( v[PITCH], vehLastView[PITCH] );
+		if ( fabs( dy ) + fabs( dp ) > 0.01f ) {
+			vehLookTime = cg.time;
+		}
+		vehLook[YAW] += dy;
+		vehLook[PITCH] += dp;
+	}
+	VectorCopy( v, vehLastView );
+	if ( vehLook[YAW] > yawLimit ) {
+		vehLook[YAW] = yawLimit;
+	} else if ( vehLook[YAW] < -yawLimit ) {
+		vehLook[YAW] = -yawLimit;
+	}
+	if ( vehLook[PITCH] > 60 ) {
+		vehLook[PITCH] = 60;
+	} else if ( vehLook[PITCH] < -60 ) {
+		vehLook[PITCH] = -60;
+	}
+	trap_Cvar_Update( &cg_oaxVehLookReturn );
+	if ( cg.time - vehLookTime > cg_oaxVehLookReturn.integer ) {
+		k = 1.0f - cg.frametime * 0.004f;
+		if ( k < 0 ) {
+			k = 0;
+		}
+		vehLook[YAW] *= k;
+		vehLook[PITCH] *= k;
+	}
+}
+
+/* the hull's axis turned by the free look */
+static void CG_VehLookAxis( vec3_t hull[3], vec3_t out[3] ) {
+	vec3_t la[3];
+
+	AnglesToAxis( vehLook, la );
+	MatrixMultiply( la, hull, out );
+}
+
 /* after CG_CalcViewValues: the prediction, then the view from the seat */
 void CG_OAXVehicleView( void ) {
-	int seat = 0, num;
+	int seat = 0, num, type;
 	const bgVehicleType_t *t;
 	centity_t *cent;
-	vec3_t org, angles, axis[3], seatOrg;
+	vec3_t org, angles, axis[3], seatOrg, view;
+	qboolean gunUser, firstPerson;
 
 	CG_VehPredict();
 	num = CG_VehSeat( &seat );
 	cgVehSaved = 0;
 	if ( num < 0 ) {
+		vehLookVeh = -1;
 		return;
 	}
 	cent = &cg_entities[num];
-	t = BG_VehicleType( cent->currentState.generic1 );
+	type = cent->currentState.generic1;
+	t = BG_VehicleType( type );
 	CG_VehLerp( cent, org, angles );
 	AnglesToAxis( angles, axis );
 	BG_VehLocalToWorld( org, axis, t->seats[seat], seatOrg );
+	gunUser = BG_VehGunSeat( type ) == seat;
+	firstPerson = CG_VehFirstPerson( type, seat );
+	BG_OAXDebugSet( "cg_veh_view", va( "%i %i %i", seat, firstPerson, gunUser ) );
 
 	/* the local occupant drawn on the seat as drawn; put back after the
 	   frame so prediction never sees it */
@@ -687,11 +1046,55 @@ void CG_OAXVehicleView( void ) {
 	cgVehSaved = 1;
 	VectorCopy( seatOrg, cg.predictedPlayerState.origin );
 
-	if ( seat == OAX_VEH_SEAT_DRIVER ) {
-		vec3_t focus, fwd, cam, view;
+	/* a seat without the gun looks relative to the hull; the gun's user
+	   (and a gunner without one) looks with the view angles themselves */
+	if ( !gunUser && seat == OAX_VEH_SEAT_DRIVER ) {
+		CG_VehFreeLook( num, seat, firstPerson ? 110 : 170 );
+	} else {
+		vehLookVeh = -1;
+	}
+
+	if ( firstPerson ) {
+		if ( seat == OAX_VEH_SEAT_DRIVER && t->cockpit ) {
+			if ( gunUser ) {
+				/* sighting from the turret: the eye turns with the gun */
+				vec3_t muzzle, dir, mount, ga[3], ya[3], yang = { 0, 0, 0 };
+				float yaw = 0, pitch = 0;
+				BG_VehGunAim( type, org, axis, cg.predictedPlayerState.viewangles, &yaw, &pitch, muzzle, dir );
+				yang[YAW] = yaw;
+				AnglesToAxis( yang, ya );
+				MatrixMultiply( ya, axis, ga );
+				BG_VehLocalToWorld( org, axis, t->gunMount, mount );
+				BG_VehLocalToWorld( mount, ga, t->eye, cg.refdef.vieworg );
+				VectorCopy( cg.predictedPlayerState.viewangles, cg.refdefViewAngles );
+			} else {
+				vec3_t va[3];
+				BG_VehLocalToWorld( org, axis, t->eye, cg.refdef.vieworg );
+				CG_VehLookAxis( axis, va );
+				BG_VehAxisToAngles( va, cg.refdefViewAngles );
+			}
+		} else {
+			VectorCopy( seatOrg, cg.refdef.vieworg );
+			cg.refdef.vieworg[2] += cg.predictedPlayerState.viewheight;
+			if ( !gunUser && seat == OAX_VEH_SEAT_DRIVER ) {
+				vec3_t va[3];
+				CG_VehLookAxis( axis, va );
+				BG_VehAxisToAngles( va, cg.refdefViewAngles );
+			}
+		}
+	} else {
+		/* the chase camera: orbiting with the aim, or behind the vehicle
+		   turned by the free look */
+		vec3_t focus, fwd, cam;
 		vec3_t mins = { -8, -8, -8 }, maxs = { 8, 8, 8 };
 		trace_t tr;
-		VectorCopy( cg.refdefViewAngles, view );
+		if ( !gunUser && seat == OAX_VEH_SEAT_DRIVER ) {
+			view[PITCH] = vehLook[PITCH];
+			view[YAW] = angles[YAW] + vehLook[YAW];
+			view[ROLL] = 0;
+		} else {
+			VectorCopy( cg.predictedPlayerState.viewangles, view );
+		}
 		if ( view[PITCH] < -10 ) {
 			view[PITCH] = -10;
 		}
@@ -702,10 +1105,9 @@ void CG_OAXVehicleView( void ) {
 		VectorMA( focus, -( t->halfExtents[0] * 2 + 140 ), fwd, cam );
 		CG_Trace( &tr, focus, mins, maxs, cam, cg.predictedPlayerState.clientNum, MASK_SOLID );
 		VectorCopy( tr.endpos, cg.refdef.vieworg );
+		/* the gun's user looks where it aims (the pitch the camera was lifted
+		   by stays out of the aim) */
 		VectorCopy( view, cg.refdefViewAngles );
-	} else {
-		VectorCopy( seatOrg, cg.refdef.vieworg );
-		cg.refdef.vieworg[2] += cg.predictedPlayerState.viewheight;
 	}
 	AnglesToAxis( cg.refdefViewAngles, cg.refdef.viewaxis );
 }
@@ -848,7 +1250,7 @@ void CG_OAXVehicleHUD( void ) {
 	/* the health bar */
 	CG_FillRect( x + 4, y + 20, ( w - 8 ) * fill, 8, bar );
 	CG_DrawRect( x + 4, y + 20, w - 8, 8, 1, frame );
-	label = va( "%s %3i%%", Q_stricmp( t->name, "hover" ) ? "BUGGY" : "HOVER", health );
+	label = va( "%s %3i%%", t->label, health );
 	CG_DrawStringExt( (int)x + 4, (int)y + 4, label, text, qtrue, qtrue, 8, 12, 0 );
 	if ( seat == OAX_VEH_SEAT_DRIVER ) {
 		if ( vp.active && vp.ent == num ) {
@@ -861,4 +1263,97 @@ void CG_OAXVehicleHUD( void ) {
 		CG_DrawStringExt( (int)( x + w ) - 4 - 6 * 8, (int)y + 4, "GUNNER", text, qtrue, qtrue, 8, 12, 0 );
 	}
 	BG_OAXDebugSet( "cg_veh_hud", va( "%i %i %i %i", num, seat, health, seat == OAX_VEH_SEAT_DRIVER ? speed : -1 ) );
+
+	/* the gun's user: heat, or the reload, in a strip above the panel */
+	if ( BG_VehGunSeat( cg_entities[num].currentState.generic1 ) == seat ) {
+		const bgVehicleGun_t *g = BG_VehicleGun( t->gun );
+		int heat = cg_entities[num].currentState.clientNum;
+		float f;
+		vec4_t gbar = { 1, 0.8f, 0.2f, 0.9f };
+		if ( g->heatPerShot > 0 ) {
+			f = ( heat & 127 ) / 127.0f;
+			gbar[0] = 1;
+			gbar[1] = 0.85f - 0.7f * f;
+			gbar[2] = 0.2f;
+			if ( heat & OAX_VEH_HEAT_LOCK ) {
+				gbar[1] = ( cg.time / 150 ) & 1 ? 0.1f : 0.5f;
+			}
+		} else {
+			f = 1.0f - (float)( cg.time - vehGun[num].flashTime ) / g->intervalMs;
+			if ( f < 0 ) {
+				f = 0;
+			}
+			gbar[0] = 0.5f;
+			gbar[1] = 0.8f;
+			gbar[2] = 1;
+		}
+		CG_FillRect( x, y - 12, w, 9, back );
+		CG_FillRect( x + 2, y - 10, ( w - 4 ) * f, 5, gbar );
+		CG_DrawRect( x, y - 12, w, 9, 1, frame );
+		BG_OAXDebugSet( "cg_veh_gun", va( "%i %i %i", cg_entities[num].currentState.powerups, heat, vehGun[num].flashTime > 0 ? cg.time - vehGun[num].flashTime : -1 ) );
+	}
+}
+
+/*
+=================
+CG_OAXVehicleCrosshair
+
+Called by CG_DrawCrosshair: qtrue when seated (nothing more for it to
+draw). The gun's user gets a reticle where the gun's line meets the world;
+other seats none (nothing to aim).
+=================
+*/
+static qboolean CG_VehToScreen( const vec3_t p, float *x, float *y ) {
+	vec3_t d;
+	float z, xs, ys;
+
+	VectorSubtract( p, cg.refdef.vieworg, d );
+	z = DotProduct( d, cg.refdef.viewaxis[0] );
+	if ( z < 1 ) {
+		return qfalse;
+	}
+	xs = DotProduct( d, cg.refdef.viewaxis[1] ) / z / tan( DEG2RAD( cg.refdef.fov_x * 0.5f ) );
+	ys = DotProduct( d, cg.refdef.viewaxis[2] ) / z / tan( DEG2RAD( cg.refdef.fov_y * 0.5f ) );
+	*x = cg.refdef.x + cg.refdef.width * 0.5f * ( 1.0f - xs );
+	*y = cg.refdef.y + cg.refdef.height * 0.5f * ( 1.0f - ys );
+	return qtrue;
+}
+
+qboolean CG_OAXVehicleCrosshair( void ) {
+	int seat = 0, num = CG_VehSeat( &seat ), heat;
+	centity_t *cent;
+	vec3_t org, angles, axis[3], muzzle, dir, end;
+	trace_t tr;
+	float x, y, size;
+	vec4_t color = { 1, 1, 1, 0.9f };
+	qhandle_t sh;
+
+	if ( num < 0 ) {
+		return qfalse;
+	}
+	cent = &cg_entities[num];
+	if ( BG_VehGunSeat( cent->currentState.generic1 ) != seat || !cg_drawCrosshair.integer ) {
+		return qtrue;
+	}
+	CG_VehLerp( cent, org, angles );
+	AnglesToAxis( angles, axis );
+	BG_VehGunAim( cent->currentState.generic1, org, axis, cg.predictedPlayerState.viewangles, NULL, NULL, muzzle, dir );
+	VectorMA( muzzle, 8192, dir, end );
+	CG_Trace( &tr, muzzle, NULL, NULL, end, num, MASK_SHOT );
+	if ( !CG_VehToScreen( tr.endpos, &x, &y ) ) {
+		return qtrue;
+	}
+	heat = cent->currentState.clientNum;
+	if ( heat & OAX_VEH_HEAT_LOCK ) {
+		color[1] = color[2] = 0.25f;
+	} else {
+		color[1] = color[2] = 1.0f - 0.6f * ( heat & 127 ) / 127.0f;
+	}
+	size = 28 * cgs.screenYScale;
+	sh = cgs.media.crosshairShader[( cg_drawCrosshair.integer - 1 ) % NUM_CROSSHAIRS];
+	trap_R_SetColor( color );
+	trap_R_DrawStretchPic( x - size * 0.5f, y - size * 0.5f, size, size, 0, 0, 1, 1, sh );
+	trap_R_SetColor( NULL );
+	BG_OAXDebugSet( "cg_veh_reticle", va( "%.1f %.1f", x, y ) );
+	return qtrue;
 }

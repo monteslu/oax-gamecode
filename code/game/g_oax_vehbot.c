@@ -30,7 +30,8 @@ on each bot's command right after the bot brain wrote it
   free vehicle near the bot and not off in the wrong direction is walked
   to and boarded with the use button; a teammate's buggy passing close
   with its gunner seat free is boarded too (the gunner fights with the
-  normal bot brain, its movement ignored).
+  normal bot brain on the mounted gun, its movement ignored). A driver on
+  the vehicle's own gun (hover craft, hover tank) fires it the same way.
 - Driving: the bot follows the navmesh path to its goal (re-pathed every
   second from the vehicle) with a pure-pursuit steering controller on the
   next path corner: steer by the heading error, full throttle when lined
@@ -222,7 +223,9 @@ static void VB_Drive( int clientNum, vehBot_t *vb, usercmd_t *cmd, gentity_t *ve
 	if ( !st ) {
 		return;
 	}
-	cmd->buttons &= ~( BUTTON_ATTACK | BUTTON_USE_HOLDABLE );
+	/* a driver on its vehicle's gun fights with the bot brain's aim and
+	   trigger (the vehicle steers on its own); others only drive */
+	cmd->buttons &= BG_VehGunSeat( G_OAXVehicleType( veh ) ) == OAX_VEH_SEAT_DRIVER ? ~BUTTON_USE_HOLDABLE : ~( BUTTON_ATTACK | BUTTON_USE_HOLDABLE );
 	cmd->upmove = 0;
 	if ( !vb->wasDriving ) {
 		vb->wasDriving = 1;

@@ -2079,6 +2079,10 @@ void CG_OAXLight( centity_t *cent );
 /* cg_oax_vehicle.c */
 void CG_OAXVehicle( centity_t *cent );
 qboolean CG_OAXVehicleDriving( void );
+int CG_OAXVehicleCamera( void );
+void CG_OAXToggleView_f( void );
+qboolean CG_OAXVehicleHidesPlayer( int clientNum );
+qboolean CG_OAXVehicleCrosshair( void );
 void CG_OAXVehicleView( void );
 void CG_OAXVehicleFrameEnd( void );
 void CG_OAXVehicleInit( void );

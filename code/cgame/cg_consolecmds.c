@@ -546,6 +546,7 @@ typedef struct {
 
 static consoleCommand_t commands[] = {
 	{ "cg_physTest", CG_PhysTest_f },	// oax: cosmetic physics effects for tests (cg_oax_phys.c)
+	{ "toggleview", CG_OAXToggleView_f },	// oax: first/third person, on foot and in vehicles (cg_oax_vehicle.c)
 	{ "testgun", CG_TestGun_f},
 	{ "testmodel", CG_TestModel_f},
 	{ "nextframe", CG_TestModelNextFrame_f},

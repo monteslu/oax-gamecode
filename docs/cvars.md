@@ -34,7 +34,9 @@ Flags: `serverinfo` (sent to clients), `latch` (takes effect on the next map),
 | `cg_oaxVehPredict` | 1 | archive | Predict your own vehicle locally (the server stays authoritative). |
 | `cg_oaxVehErrorDecay` | 150 | archive | Milliseconds over which a vehicle prediction error is blended out. |
 | `cg_oaxVehSnap` | 96 | archive | A prediction error over this many units snaps instead of blending (a teleport). |
-| `cg_oaxVehHud` | 1 | archive | The vehicle HUD: vehicle health for riders, speed for the driver. |
+| `cg_oaxVehHud` | 1 | archive | The vehicle HUD: vehicle health for riders, speed for the driver, heat or reload for whoever has the gun. |
+| `cg_oaxVehView` | 0 | archive | The view from a vehicle seat: 0 by seat (cockpit drivers and gunners first person, drivers of open vehicles the chase camera), 1 first person, 2 the chase camera. `toggleview` switches it. |
+| `cg_oaxVehLookReturn` | 800 | archive | Milliseconds without look input before a seat without the gun swings its view back behind the vehicle. |
 | `cg_oaxGroundFx` | 1 | archive | Ground effects on maps whose worldspawn sets `oax_groundfx 1`: rings where players wade, vehicle dust, splashes and tyre tracks. |
 | `cg_oaxUnderwaterFog` | "" | archive | Overrides the view fog (`r g b density`) while the eye is in water, on maps whose worldspawn sets `oax_underwaterfog`; empty = the map's. |
 
@@ -77,6 +79,8 @@ Server console (qagame):
   vehicle (or the n-th vehicle) with these controls for msec, then parks it.
 - `vehrocket <x y z> <tx ty tz>`: fires a rocket from a point toward another.
 - `vehplace <client> <x y z>`: puts a client there standing still.
+- `vehaim <client> <pitch> <yaw>`: turns a client's view; `vehaim <client>
+  veh <n>` turns it so its mounted gun points at the n-th vehicle.
 - `vehkick <ix iy iz>`: an impulse on the first driven vehicle (else the
   first vehicle).
 
@@ -86,6 +90,10 @@ unchanged.
 
 UI console: `ui_graphics` opens the graphics options (resolution, quality)
 directly.
+
+Gameplay command (cgame): `toggleview` switches first and third person: in
+a vehicle `cg_oaxVehView` (1 and 2), on foot `cg_thirdPerson`. The default
+pad binds put it on Y, the keyboard's on V.
 
 Client console (cgame):
 

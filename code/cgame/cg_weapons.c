@@ -2189,6 +2189,11 @@ void CG_AddViewWeapon( playerState_t *ps )
 		return;
 	}
 
+	// oax: in a vehicle seat the hands are off the own weapon
+	if ( ps->pm_flags & 4 /* PMF_OAX_VEHICLE, bg_oax_vehicle.h */ ) {
+		return;
+	}
+
 
 	// allow the gun to be completely removed
 	if ( !cg_drawGun.integer ) {

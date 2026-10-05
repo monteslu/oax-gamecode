@@ -2776,6 +2776,11 @@ static void CG_DrawCrosshair(void) {
 
 	currentWeapon = cg.predictedPlayerState.weapon;
 
+	// oax: in a vehicle, the mounted gun's reticle or nothing
+	if ( CG_OAXVehicleCrosshair() ) {
+		return;
+	}
+
 	if (!cg_drawCrosshair.integer) {
 		return;
 	}
