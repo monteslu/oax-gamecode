@@ -1211,6 +1211,11 @@ static void CG_ServerCommand( void ) {
 		return;
 	}
 
+	if ( strequals( cmd, "oaxshake" ) ) {	// oax: target_oax_shake (g_oax_battle.c)
+		CG_OAXShakeCommand();
+		return;
+	}
+
 	if ( strequals( cmd, "cp" ) ) {
 		CG_CenterPrint( CG_Argv(1), SCREEN_HEIGHT * 0.30, BIGCHAR_WIDTH );
 		return;

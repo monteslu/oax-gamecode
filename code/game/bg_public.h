@@ -818,6 +818,7 @@ typedef enum {
 	ET_OAX_LIGHT,			// oax unified lighting: a light the game controls
 	ET_OAX_EMITTER,			// oax particle emitter (func_oax_emitter, g_oax_fx.c)
 	ET_OAX_VEHICLE,			// oax vehicles (g_oax_vehicle.c): a Box3D vehicle the server simulates
+	ET_OAX_TURRET,			// oax automatic turret (misc_oax_turret, g_oax_battle.c)
 
 	ET_EVENTS				// any of the EV_* events can be added freestanding
 							// by setting eType to ET_EVENTS + eventNum

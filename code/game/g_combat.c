@@ -1115,7 +1115,7 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 	}
 
 	// oax: Assault objectives take (or ignore) the hit themselves
-	if ( G_OAXAssaultDamage( targ, attacker, damage ) ) {
+	if ( G_OAXAssaultDamage( targ, attacker, damage ) || G_OAXTurretDamage( targ, attacker, damage ) ) {
 		return;
 	}
 

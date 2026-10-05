@@ -87,6 +87,7 @@ void CG_OAXInit( void ) {
 	CG_PhysInit();			/* "physics": the cosmetic world, gibs, ragdolls */
 	CG_OAXVehicleInit();	/* own-vehicle prediction (cg_oax_vehicle.c) */
 	CG_OAXAssaultInit();	/* the Assault HUD (cg_oax_assault.c) */
+	CG_OAXBattleInit();		/* turrets, view shake (cg_oax_assault.c) */
 	CG_OAXFxInit();
 }
 

@@ -126,6 +126,7 @@ static byte		nbFailed[MAX_CLIENTS][MAX_GENTITIES];	/* this bot found no way to t
 static int		nbPaths, nbNoPath, nbGoalsReached, nbStuck;
 static int		nbLinksTaken, nbLinksDone, nbLinksFailed;
 static int		nbLinkKindsDone;	/* OR of the link kinds completed */
+static int		nbStuckAt[8][4];	/* x y z goal kind of the last stuck events */
 static int		nbKindStats[16][3];
 static int		nbTlAttack;	/* by kind bit: taken, done, failed */
 static char		nbLinkFail[16][80];	/* by kind bit: the last failure */
@@ -156,6 +157,7 @@ void G_OAXNavBotInit( void ) {
 	memset( nbVisited, 0, sizeof( nbVisited ) );
 	memset( nbFailed, 0, sizeof( nbFailed ) );
 	nbPaths = nbNoPath = nbGoalsReached = nbStuck = 0;
+	memset( nbStuckAt, 0, sizeof( nbStuckAt ) );
 	nbLinksTaken = nbLinksDone = nbLinksFailed = nbLinkKindsDone = 0;
 	memset( nbKindStats, 0, sizeof( nbKindStats ) );
 	memset( nbLinkFail, 0, sizeof( nbLinkFail ) );
@@ -164,7 +166,10 @@ void G_OAXNavBotInit( void ) {
 }
 
 int G_OAXNavBotsActive( void ) {
-	return !trap_AAS_Initialized() && BG_OAXFeature( "nav" ) && trap_OAX_NavStatus() > 0;
+	/* Assault is played by these bots even where the map has AAS (the
+	   stock bots know nothing of objectives; the engine builds the
+	   navmesh for g_gametype 14) */
+	return ( !trap_AAS_Initialized() || g_gametype.integer == GT_ASSAULT ) && BG_OAXFeature( "nav" ) && trap_OAX_NavStatus() > 0;
 }
 
 qboolean G_OAXNavBotConnect( int clientNum, float skill ) {
@@ -423,6 +428,27 @@ static int NB_FindEnemy( gentity_t *ent ) {
 			bestDist = d;
 		}
 	}
+	/* turrets that shoot at this bot's side (misc_oax_turret) */
+	for ( i = MAX_CLIENTS; i < level.num_entities; i++ ) {
+		gentity_t *o = &g_entities[i];
+		vec3_t oe;
+		trace_t tr;
+		float d;
+		if ( !o->inuse || o->s.eType != ET_OAX_TURRET || !o->takedamage || !G_OAXTurretHostile( o, ent ) ) {
+			continue;
+		}
+		VectorCopy( o->s.origin, oe );
+		oe[2] += 24;
+		d = Distance( eye, oe );
+		if ( d >= bestDist ) {
+			continue;
+		}
+		trap_Trace( &tr, eye, NULL, NULL, oe, ent->s.number, MASK_SHOT );
+		if ( tr.entityNum == i ) {
+			best = i;
+			bestDist = d;
+		}
+	}
 	return best;
 }
 
@@ -490,7 +516,9 @@ static void NB_Repath( int clientNum, navBot_t *nb, const vec3_t origin, int tim
 		VectorCopy( nb->goal, nb->pathGoal );
 		return;
 	}
-	nb->numPts = trap_OAX_NavFindPathEx( feet, nb->goal, nb->pts, nb->links, NB_MAX_POINTS, &flags, G_OAXNavInclude(), 0 );
+	/* Assault: teleporters closed to this bot's side stay out of its path */
+	nb->numPts = trap_OAX_NavFindPathEx( feet, nb->goal, nb->pts, nb->links, NB_MAX_POINTS, &flags, G_OAXNavInclude(),
+		G_OAXAssaultNavExclude( g_entities[clientNum].client->sess.sessionTeam ) );
 	nb->cur = ( nb->numPts > 0 && nb->links[0] >= 0 ) ? 0 : 1;
 	nb->link = -1;
 	nb->pathTime = time;
@@ -871,6 +899,11 @@ static void NB_Think( int clientNum, int time ) {
 	if ( time - nb->lastCheck >= NB_STUCK_MS ) {
 		if ( nb->goalKind != NBG_NONE && nb->link < 0 && len > 0.001f && Distance( origin, nb->lastPos ) < 32.0f ) {
 			nbStuck++;
+			/* where (the last eight, for finding what traps bots) */
+			nbStuckAt[nbStuck & 7][0] = (int)origin[0];
+			nbStuckAt[nbStuck & 7][1] = (int)origin[1];
+			nbStuckAt[nbStuck & 7][2] = (int)origin[2];
+			nbStuckAt[nbStuck & 7][3] = nb->goalKind;
 			if ( !bot_oaxNav.integer ) {
 				/* control: pure straight-line steering, no recovery */
 				goto stuckDone;
@@ -906,8 +939,13 @@ stuckDone:
 		}
 		VectorCopy( origin, eye );
 		eye[2] += cl->ps.viewheight;
-		VectorCopy( o->client->ps.origin, aim );
-		aim[2] += 8;
+		if ( o->client ) {
+			VectorCopy( o->client->ps.origin, aim );
+			aim[2] += 8;
+		} else {
+			VectorCopy( o->s.origin, aim );		/* a turret */
+			aim[2] += 24;
+		}
 		VectorSubtract( aim, eye, aim );
 		vectoangles( aim, wanted );
 		wanted[PITCH] += nb->aimErr[0];
@@ -996,7 +1034,8 @@ static void NB_Hash( int time ) {
 }
 
 void G_OAXNavBotFrame( int time ) {
-	int i, n = 0;
+	int i, n = 0, guardN = 0, guardNear = 0, attackN = 0;
+	float guardSum = 0;
 	char cmdBuf[1024];
 
 	trap_Cvar_Update( &bot_oaxNav );
@@ -1025,6 +1064,18 @@ void G_OAXNavBotFrame( int time ) {
 				navBots[i].cmd.buttons = 0;
 			}
 		}
+		/* Assault: how many defending bots are at their posts, how far on average */
+		if ( level.framenum % 10 == 0 && navBots[i].goalKind == NBG_GUARD && ent->health > 0 ) {
+			float d = Distance( ent->client->ps.origin, navBots[i].goal );
+			guardN++;
+			guardSum += d;
+			if ( d < 300.0f ) {
+				guardNear++;
+			}
+		}
+		if ( navBots[i].goalKind == NBG_OBJECTIVE && ent->health > 0 ) {
+			attackN++;
+		}
 		if ( i < 4 && level.framenum % 10 == 0 ) {
 			BG_OAXDebugSet( va( "g_navbot_pos_%i", i ), va( "%.1f %.1f %.1f %i", ent->client->ps.origin[0], ent->client->ps.origin[1],
 				ent->client->ps.origin[2], ent->health ) );
@@ -1037,10 +1088,22 @@ void G_OAXNavBotFrame( int time ) {
 	NB_Hash( time );
 	if ( level.framenum % 10 == 0 ) {
 		BG_OAXDebugSetInt( "g_navbots", n );
+		if ( g_gametype.integer == GT_ASSAULT ) {
+			/* attackers on an objective, defenders posted, within 300 of the post, mean distance */
+			BG_OAXDebugSet( "g_navbot_assault", va( "%i %i %i %.0f", attackN, guardN, guardNear, guardN ? guardSum / guardN : 0 ) );
+		}
 		BG_OAXDebugSetInt( "g_navbot_paths", nbPaths );
 		BG_OAXDebugSetInt( "g_navbot_nopath", nbNoPath );
 		BG_OAXDebugSetInt( "g_navbot_goals", nbGoalsReached );
 		BG_OAXDebugSetInt( "g_navbot_stuck", nbStuck );
+		{
+			char buf[256] = "";
+			int k;
+			for ( k = 0; k < 8; k++ ) {
+				Q_strcat( buf, sizeof( buf ), va( "%s%i,%i,%i,%i", k ? " " : "", nbStuckAt[k][0], nbStuckAt[k][1], nbStuckAt[k][2], nbStuckAt[k][3] ) );
+			}
+			BG_OAXDebugSet( "g_navbot_stuck_at", buf );
+		}
 		BG_OAXDebugSetInt( "g_nav_stuck", nbStuck );
 		BG_OAXDebugSetInt( "g_navbot_links_taken", nbLinksTaken );
 		BG_OAXDebugSetInt( "g_navbot_links_done", nbLinksDone );

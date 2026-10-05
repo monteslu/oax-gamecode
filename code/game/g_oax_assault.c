@@ -97,6 +97,9 @@ typedef struct {
 } asObjective_t;
 
 static asObjective_t	asObj[OAX_AS_MAX_OBJECTIVES];
+#define AS_MAX_DEFEND	64
+static gentity_t		*asDefend[AS_MAX_DEFEND];	/* info_oax_assault_defend posts */
+static int				asNumDefend;
 static int				asNumObj;
 static int				asTimeKey;		/* info_oax_assault "time", 0 none */
 static char				asBriefing[128];
@@ -381,6 +384,133 @@ void SP_info_oax_assault( gentity_t *ent ) {
 		}
 	}
 	ent->r.svFlags |= SVF_NOCLIENT;
+}
+
+/* ---- gates: role / after / until on triggers and Assault entities --------------------- */
+
+typedef struct {
+	gentity_t	*ent;		/* the entity the keys were read for (slots are reused) */
+	int			role;		/* -1 any, 0 attack, 1 defend */
+	char		after[32];
+	char		until[32];
+	int			navBit;		/* its navmesh link's exclusion bit, 0 none */
+} asGate_t;
+
+static asGate_t	asGates[MAX_GENTITIES];
+static int		asGateBitsUsed;
+/* link flag bits the engine's navmesh leaves free (g_oax_nav.h OAX_NAV_*) */
+static const int asGateBits[] = { 0x0004, 0x0008, 0x0200, 0x0400, 0x0800, 0x2000, 0x4000, 0x8000 };
+
+/* after the entity's spawn function: its role / after / until keys */
+void G_OAXAssaultGateSpawn( gentity_t *ent ) {
+	asGate_t *g;
+	char *role, *after, *until;
+
+	if ( !ent || !ent->inuse || ent->s.number >= MAX_GENTITIES || g_gametype.integer != GT_ASSAULT ||
+		!Q_stricmp( ent->classname, "info_oax_assault_spawn" ) ) {
+		return;
+	}
+	G_SpawnString( "role", "", &role );
+	G_SpawnString( "after", "", &after );
+	G_SpawnString( "until", "", &until );
+	if ( !role[0] && !after[0] && !until[0] ) {
+		return;
+	}
+	g = &asGates[ent->s.number];
+	memset( g, 0, sizeof( *g ) );
+	g->ent = ent;
+	g->role = !Q_stricmp( role, "attack" ) ? 0 : !Q_stricmp( role, "defend" ) ? 1 : -1;
+	Q_strncpyz( g->after, after, sizeof( g->after ) );
+	Q_strncpyz( g->until, until, sizeof( g->until ) );
+}
+
+static asGate_t *AS_Gate( gentity_t *ent ) {
+	asGate_t *g;
+
+	if ( !ent || ent->s.number >= MAX_GENTITIES ) {
+		return NULL;
+	}
+	g = &asGates[ent->s.number];
+	return g->ent == ent && ent->inuse ? g : NULL;
+}
+
+/* the stage part of a gate: after done, until not done */
+static qboolean AS_StageOpen( const char *after, const char *until ) {
+	asObjective_t *o;
+
+	if ( after[0] && ( !( o = AS_OfId( after ) ) || o->state != OAX_ASOS_DONE ) ) {
+		return qfalse;
+	}
+	if ( until[0] && ( o = AS_OfId( until ) ) && o->state == OAX_ASOS_DONE ) {
+		return qfalse;
+	}
+	return qtrue;
+}
+
+static qboolean AS_GateOpenFor( asGate_t *g, int team ) {
+	if ( g->role >= 0 && ( team == as.attackers ? 0 : 1 ) != g->role ) {
+		return qfalse;
+	}
+	return AS_StageOpen( g->after, g->until );
+}
+
+/* may this player use this trigger now (always, outside Assault or without keys) */
+qboolean G_OAXAssaultGateOpen( gentity_t *trigger, gentity_t *player ) {
+	asGate_t *g;
+
+	if ( !as.active || !( g = AS_Gate( trigger ) ) || !player || !player->client ) {
+		return qtrue;
+	}
+	return AS_GateOpenFor( g, player->client->sess.sessionTeam );
+}
+
+/* is an Assault entity's stage open (after / until), whoever asks */
+qboolean G_OAXAssaultStageOpen( gentity_t *ent ) {
+	asGate_t *g;
+
+	if ( !as.active || !( g = AS_Gate( ent ) ) ) {
+		return qtrue;
+	}
+	return AS_StageOpen( g->after, g->until );
+}
+
+/* the role key of an Assault entity: -1 any, 0 attack, 1 defend */
+int G_OAXAssaultRole( gentity_t *ent ) {
+	asGate_t *g = AS_Gate( ent );
+	return g ? g->role : -1;
+}
+
+/* the navmesh link of a gated teleporter gets a bit of its own (up to 8) */
+int G_OAXAssaultGateNavBit( int entnum ) {
+	asGate_t *g;
+
+	if ( entnum < 0 || entnum >= MAX_GENTITIES || !( g = AS_Gate( &g_entities[entnum] ) ) ) {
+		return 0;
+	}
+	if ( !g->navBit ) {
+		if ( asGateBitsUsed >= (int)( sizeof( asGateBits ) / sizeof( asGateBits[0] ) ) ) {
+			G_Printf( S_COLOR_YELLOW "assault: more than %i gated teleporters; bots may path through closed ones\n", asGateBitsUsed );
+			return 0;
+		}
+		g->navBit = asGateBits[asGateBitsUsed++];
+	}
+	return g->navBit;
+}
+
+/* the link bits of the teleporters closed to this team now */
+int G_OAXAssaultNavExclude( int team ) {
+	int i, bits = 0;
+
+	if ( !as.active || !asGateBitsUsed ) {
+		return 0;
+	}
+	for ( i = 0; i < MAX_GENTITIES; i++ ) {
+		asGate_t *g = &asGates[i];
+		if ( g->navBit && g->ent && g->ent->inuse && !AS_GateOpenFor( g, team ) ) {
+			bits |= g->navBit;
+		}
+	}
+	return bits;
 }
 
 /* ---- spawning ---------------------------------------------------------------------- */
@@ -669,6 +799,9 @@ void G_OAXAssaultFrame( void ) {
 }
 
 void G_OAXAssaultShutdown( void ) {
+	memset( asGates, 0, sizeof( asGates ) );
+	asNumDefend = 0;
+	asGateBitsUsed = 0;
 	asNumObj = 0;
 	asTimeKey = 0;
 	asBriefing[0] = '\0';
@@ -720,11 +853,57 @@ qboolean G_OAXAssaultObjective( int i, vec3_t point, int *type, gentity_t **ent,
 	return qfalse;
 }
 
-/* for the defending bots: the n-th active defender spawn spot (modulo
-   their number), the floor under it */
+/*QUAKED info_oax_assault_defend (0 .5 1) (-16 -16 -24) (16 16 32)
+A defending bot's post (a UT DefensePoint): "objective" an id (held while
+that objective is not done), "priority" (lower first, default 0),
+"after" / "until" ids.
+*/
+void SP_info_oax_assault_defend( gentity_t *ent ) {
+	char *s;
+
+	if ( g_gametype.integer != GT_ASSAULT || asNumDefend >= AS_MAX_DEFEND ) {
+		G_FreeEntity( ent );
+		return;
+	}
+	G_SpawnString( "objective", "", &s );
+	ent->message = G_NewString( s );
+	G_SpawnInt( "priority", "0", &ent->count );
+	ent->r.svFlags |= SVF_NOCLIENT;
+	asDefend[asNumDefend++] = ent;
+}
+
+static qboolean AS_DefendActive( gentity_t *ent ) {
+	asObjective_t *o;
+
+	if ( ent->message && ent->message[0] && ( o = AS_OfId( ent->message ) ) && o->state == OAX_ASOS_DONE ) {
+		return qfalse;
+	}
+	return G_OAXAssaultStageOpen( ent );
+}
+
+/* for the defending bots: their n-th post, the floor under it. The map's
+   info_oax_assault_defend posts when any is active (lower priority first,
+   then the order in the map), else the active defender spawn spots */
 qboolean G_OAXAssaultGuardSpot( int n, vec3_t point ) {
 	gentity_t *spots[64], *spot = NULL;
-	int count = 0;
+	int count = 0, i, k;
+
+	for ( i = 0; i < asNumDefend && count < 64; i++ ) {
+		if ( asDefend[i]->inuse && AS_DefendActive( asDefend[i] ) ) {
+			/* insertion by priority, stable */
+			for ( k = count; k > 0 && spots[k - 1]->count > asDefend[i]->count; k-- ) {
+				spots[k] = spots[k - 1];
+			}
+			spots[k] = asDefend[i];
+			count++;
+		}
+	}
+	if ( count ) {
+		spot = spots[( n < 0 ? 0 : n ) % count];
+		VectorCopy( spot->s.origin, point );
+		point[2] -= 24;
+		return qtrue;
+	}
 
 	while ( ( spot = G_Find( spot, FOFS( classname ), "info_oax_assault_spawn" ) ) != NULL && count < 64 ) {
 		if ( spot->count == 1 && AS_SpawnActive( spot ) ) {

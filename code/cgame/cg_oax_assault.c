@@ -33,6 +33,12 @@ g_oax_assault.c, the shared formats bg_oax_assault.h).
 
 cg_oaxAssaultHud 0 hides it all. Debug value cg_as_hud: round, role
 (0 attack, 1 defend), seconds left, open objectives.
+
+Also the battlefield entities' client side (g_oax_battle.c): the turret
+(ET_OAX_TURRET: the heavy machine gun turned to its aim, barrels spinning
+and a flash while it fires) and the view shake (server command oaxshake;
+cg_oaxShake 0 turns it off). Debug value cg_shake: the last shake's
+strength here and the turret rounds seen.
 ===========================================================================
 */
 #include "cg_local.h"
@@ -238,4 +244,128 @@ void CG_OAXAssaultHUD( void ) {
 		}
 	}
 	BG_OAXDebugSet( "cg_as_hud", va( "%i %i %i %i", cas.round, spectator ? -1 : attacking ? 0 : 1, left / 1000, open ) );
+}
+
+/*
+==============================================================================
+battlefield entities
+==============================================================================
+*/
+
+static vmCvar_t	cg_oaxShake;
+static struct {
+	float	strength;		/* degrees, at the start */
+	int		start, duration;
+} cshake;
+static qhandle_t	turretBarrel, turretFlash;
+static sfxHandle_t	turretSound;
+static int			turretShots[MAX_GENTITIES], turretFlashTime[MAX_GENTITIES], turretSeen[MAX_GENTITIES], turretRounds;
+static float		turretSpin[MAX_GENTITIES];
+
+void CG_OAXBattleInit( void ) {
+	trap_Cvar_Register( &cg_oaxShake, "cg_oaxShake", "1", CVAR_ARCHIVE );
+	memset( &cshake, 0, sizeof( cshake ) );
+	memset( turretSeen, 0, sizeof( turretSeen ) );
+	turretRounds = 0;
+	turretBarrel = trap_R_RegisterModel( "models/weapons/vulcan/vulcan_barrel.md3" );
+	turretFlash = trap_R_RegisterModel( "models/weapons/vulcan/vulcan_flash.md3" );
+	turretSound = trap_S_RegisterSound( "sound/weapons/vulcan/vulcanf1b.wav", qfalse );
+}
+
+/* oaxshake <intensity> <ms> <x y z> <radius> */
+void CG_OAXShakeCommand( void ) {
+	float intensity = atof( CG_Argv( 1 ) ), radius = atof( CG_Argv( 6 ) ), f = 1.0f;
+	vec3_t at;
+
+	at[0] = atof( CG_Argv( 3 ) );
+	at[1] = atof( CG_Argv( 4 ) );
+	at[2] = atof( CG_Argv( 5 ) );
+	if ( radius > 0 ) {
+		f = 1.0f - Distance( at, cg.refdef.vieworg ) / radius;
+		if ( f <= 0 ) {
+			return;
+		}
+	}
+	/* a stronger shake replaces a fading one */
+	if ( intensity * f >= cshake.strength * ( 1.0f - (float)( cg.time - cshake.start ) / ( cshake.duration > 0 ? cshake.duration : 1 ) ) ) {
+		cshake.strength = intensity * f;
+		cshake.start = cg.time;
+		cshake.duration = atoi( CG_Argv( 2 ) );
+	}
+	BG_OAXDebugSet( "cg_shake", va( "%.2f %i", cshake.strength, turretRounds ) );
+}
+
+/* after the view is built: the shake, fading out */
+void CG_OAXShakeView( void ) {
+	float f, s;
+
+	trap_Cvar_Update( &cg_oaxShake );
+	if ( !cg_oaxShake.integer || cshake.duration <= 0 || cg.time < cshake.start || cg.time - cshake.start >= cshake.duration ) {
+		return;
+	}
+	f = 1.0f - (float)( cg.time - cshake.start ) / cshake.duration;
+	s = cshake.strength * f;
+	cg.refdefViewAngles[PITCH] += s * sin( cg.time * 0.051f );
+	cg.refdefViewAngles[YAW] += s * 0.7f * sin( cg.time * 0.037f + 1.3f );
+	cg.refdefViewAngles[ROLL] += s * 0.5f * sin( cg.time * 0.063f + 2.1f );
+	AnglesToAxis( cg.refdefViewAngles, cg.refdef.viewaxis );
+}
+
+void CG_OAXTurret( centity_t *cent ) {
+	entityState_t *s = &cent->currentState;
+	refEntity_t gun, part;
+	vec3_t ang;
+	int n = s->number, k;
+
+	memset( &gun, 0, sizeof( gun ) );
+	VectorCopy( cent->lerpOrigin, gun.origin );
+	gun.origin[2] += 24;
+	VectorCopy( gun.origin, gun.oldorigin );
+	VectorCopy( cent->lerpAngles, ang );
+	AnglesToAxis( ang, gun.axis );
+	for ( k = 0; k < 3; k++ ) {
+		VectorScale( gun.axis[k], 2.0f, gun.axis[k] );
+	}
+	gun.nonNormalizedAxes = qtrue;
+	gun.hModel = cgs.gameModels[s->modelindex];
+	gun.renderfx = RF_MINLIGHT;
+	if ( s->eFlags & EF_DEAD ) {
+		gun.shaderRGBA[0] = gun.shaderRGBA[1] = gun.shaderRGBA[2] = 60;
+	}
+	trap_R_AddRefEntityToScene( &gun );
+
+	/* a new round: flash and sound (not on first sight) */
+	if ( !turretSeen[n] ) {
+		turretSeen[n] = 1;
+		turretShots[n] = s->powerups;
+		turretFlashTime[n] = -100000;
+	} else if ( s->powerups != turretShots[n] ) {
+		turretRounds += ( s->powerups - turretShots[n] ) & 0xffff;
+		turretShots[n] = s->powerups;
+		turretFlashTime[n] = cg.time;
+		trap_S_StartSound( gun.origin, n, CHAN_WEAPON, turretSound );
+	}
+	if ( cg.time - turretFlashTime[n] < 300 ) {
+		turretSpin[n] = AngleMod( turretSpin[n] + cg.frametime * 1.2f );
+	}
+	if ( turretBarrel ) {
+		memset( &part, 0, sizeof( part ) );
+		ang[PITCH] = ang[YAW] = 0;
+		ang[ROLL] = turretSpin[n];
+		AnglesToAxis( ang, part.axis );
+		part.hModel = turretBarrel;
+		part.renderfx = RF_MINLIGHT;
+		CG_PositionRotatedEntityOnTag( &part, &gun, gun.hModel, "tag_barrel" );
+		part.nonNormalizedAxes = qtrue;
+		trap_R_AddRefEntityToScene( &part );
+	}
+	if ( cg.time - turretFlashTime[n] < 50 && turretFlash ) {
+		memset( &part, 0, sizeof( part ) );
+		AxisClear( part.axis );
+		part.hModel = turretFlash;
+		CG_PositionRotatedEntityOnTag( &part, &gun, gun.hModel, "tag_flash" );
+		part.nonNormalizedAxes = qtrue;
+		trap_R_AddRefEntityToScene( &part );
+		trap_R_AddLightToScene( part.origin, 180, 1, 0.75f, 0.3f );
+	}
 }

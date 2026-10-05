@@ -190,6 +190,11 @@ void SP_info_oax_vehicle(gentity_t *ent);
 void SP_func_oax_objective(gentity_t *ent);
 void SP_info_oax_assault_spawn(gentity_t *ent);
 void SP_info_oax_assault(gentity_t *ent);
+void SP_info_oax_assault_defend(gentity_t *ent);
+void SP_target_oax_shake(gentity_t *ent);
+void SP_target_oax_explosion(gentity_t *ent);
+void SP_trigger_oax_artillery(gentity_t *ent);
+void SP_misc_oax_turret(gentity_t *ent);
 void SP_info_oax_route(gentity_t *ent);
 void SP_misc_portal_surface(gentity_t *ent);
 
@@ -296,6 +301,11 @@ spawn_t	spawns[] = {
 	{"func_oax_objective", SP_func_oax_objective},	/* Assault objective (g_oax_assault.c) */
 	{"info_oax_assault_spawn", SP_info_oax_assault_spawn},	/* Assault spawn point */
 	{"info_oax_assault", SP_info_oax_assault},	/* Assault settings */
+	{"info_oax_assault_defend", SP_info_oax_assault_defend},	/* Assault defending bot post */
+	{"target_oax_shake", SP_target_oax_shake},	/* battlefield entities (g_oax_battle.c) */
+	{"target_oax_explosion", SP_target_oax_explosion},
+	{"trigger_oax_artillery", SP_trigger_oax_artillery},
+	{"misc_oax_turret", SP_misc_oax_turret},
 	{"info_oax_route", SP_info_oax_route},		/* navigation route ends (g_oax_navlinks.c) */
 
 	{"shooter_rocket", SP_shooter_rocket},
@@ -360,6 +370,7 @@ qboolean G_CallSpawn( gentity_t *ent ) {
 		if ( strequals(s->name, itemname) ) {
 			// found it
 			s->spawn(ent);
+			G_OAXAssaultGateSpawn( ent );	// oax: Assault role/after/until on triggers
 			return qtrue;
 		}
 	}

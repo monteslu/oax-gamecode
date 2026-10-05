@@ -1082,6 +1082,9 @@ static void CG_AddCEntity( centity_t *cent ) {
 	case ET_OAX_VEHICLE:
 		CG_OAXVehicle( cent );
 		break;
+	case ET_OAX_TURRET:
+		CG_OAXTurret( cent );
+		break;
 	}
 }
 

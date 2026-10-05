@@ -197,7 +197,9 @@ static void G_OAXNavAdd( int kind, const vec3_t start, const vec3_t end, float r
 	if ( numNavLinks >= OAX_NAV_MAX_LINKS ) {
 		return;
 	}
-	idx = trap_OAX_NavAddLink( start, end, kind, radius, bidir );
+	/* an Assault-gated teleporter's link carries a bit of its own, which
+	   bots it is closed to exclude (G_OAXAssaultNavExclude) */
+	idx = trap_OAX_NavAddLink( start, end, kind | ( kind == OAX_NAV_TELEPORT ? G_OAXAssaultGateNavBit( ent ) : 0 ), radius, bidir );
 	if ( idx != numNavLinks ) {
 		return;		/* the engine is out of room: keep both lists in step */
 	}

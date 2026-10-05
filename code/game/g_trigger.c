@@ -89,6 +89,10 @@ void Touch_Multi( gentity_t *self, gentity_t *other, trace_t *trace )
 	if( !other->client ) {
 		return;
 	}
+	// oax: Assault side and stage (role, after, until)
+	if ( !G_OAXAssaultGateOpen( self, other ) ) {
+		return;
+	}
 	multi_trigger( self, other );
 }
 
@@ -155,6 +159,10 @@ void trigger_push_touch (gentity_t *self, gentity_t *other, trace_t *trace )
 {
 
 	if ( !other->client ) {
+		return;
+	}
+	// oax: Assault side and stage (role, after, until)
+	if ( !G_OAXAssaultGateOpen( self, other ) ) {
 		return;
 	}
 
@@ -303,6 +311,10 @@ void trigger_teleporter_touch (gentity_t *self, gentity_t *other, trace_t *trace
 	}
 
 
+	// oax: Assault side and stage (role, after, until)
+	if ( !G_OAXAssaultGateOpen( self, other ) ) {
+		return;
+	}
 	// oax: a noretrigger teleporter does not send on a player who arrived in it
 	if ( G_OAXTeleportLocked( self, other ) ) {
 		return;

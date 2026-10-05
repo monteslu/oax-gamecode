@@ -76,6 +76,7 @@ void G_OAXInit( int levelTime, int randomSeed, int restart ) {
 	G_OAXScriptInit( levelTime, randomSeed, restart );	/* "script" */
 	G_OAXVehicleInit();			/* "physics_vehicle", rule g_oaxVehicles */
 	G_OAXAssaultInit( restart );	/* g_gametype GT_ASSAULT */
+	G_OAXBattleInit();			/* turrets, artillery, shakes (g_oax_battle.c) */
 	G_OAXPlaceInit();			/* exact setviewpos read-back */
 }
 

@@ -49,6 +49,7 @@ OAX_GSRC = \
   game/bg_oax_vehicle \
   game/g_oax_vehicle \
   game/g_oax_assault \
+  game/g_oax_battle \
   game/g_oax_vehbot \
   game/g_oax_navlinks \
   game/g_oax_teleport \
