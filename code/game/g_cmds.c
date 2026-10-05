@@ -2279,6 +2279,7 @@ commands_t cmds[ ] =
 	// normal commands
 	{ "team", 0, Cmd_Team_f },
 	{ "vote", 0, Cmd_Vote_f },
+	{ "oaxseat", CMD_LIVING, G_OAXVehicleSeatCmd },	// oax: move to seat n of one's vehicle (g_oax_vehicle.c)
 
 	// communication commands
 	{ "tell", CMD_MESSAGE, Cmd_Tell_f },

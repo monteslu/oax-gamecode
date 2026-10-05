@@ -257,7 +257,7 @@ static void VB_Drive( int clientNum, vehBot_t *vb, usercmd_t *cmd, gentity_t *ve
 		cmd->forwardmove = 0;
 		cmd->rightmove = 0;
 		cmd->upmove = -127;		/* brake while getting out */
-		VB_PressUse( vb, cmd );
+		cmd->buttons |= BUTTON_USE_HOLDABLE;	/* held: getting out takes a hold */
 		return;
 	}
 
@@ -325,8 +325,7 @@ static void VB_Drive( int clientNum, vehBot_t *vb, usercmd_t *cmd, gentity_t *ve
 		throttle = 0.0f;
 	}
 	if ( fabs( err ) > 60.0f && speed > 650.0f ) {
-		throttle = 0.0f;
-		cmd->upmove = -127;
+		throttle = -1.0f;		/* against the motion: the brakes */
 	}
 	cmd->forwardmove = (signed char)( throttle * 127.0f );
 	cmd->rightmove = (signed char)( -steer * 127.0f );
@@ -362,8 +361,9 @@ void G_OAXVehBotCommand( int clientNum, usercmd_t *cmd, const vec3_t goal, int h
 	vb->wasDriving = 0;
 	vbGunners++;
 	cmd->buttons &= ~BUTTON_USE_HOLDABLE;
+	cmd->upmove = 0;		/* jump would change seats */
 	if ( g_entities[veh].s.otherEntityNum == ENTITYNUM_NONE || ( haveGoal && VB_HorizDist( ent->client->ps.origin, goal ) < VB_EXIT_GOAL ) ) {
-		VB_PressUse( vb, cmd );
+		cmd->buttons |= BUTTON_USE_HOLDABLE;	/* held: getting out takes a hold */
 	}
 }
 

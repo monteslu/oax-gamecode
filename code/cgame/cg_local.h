@@ -2083,6 +2083,7 @@ int CG_OAXVehicleCamera( void );
 void CG_OAXToggleView_f( void );
 qboolean CG_OAXVehicleHidesPlayer( int clientNum );
 qboolean CG_OAXVehicleCrosshair( void );
+qboolean CG_OAXVehicleSeatKey( int num );
 void CG_OAXVehicleView( void );
 void CG_OAXVehicleFrameEnd( void );
 void CG_OAXVehicleInit( void );

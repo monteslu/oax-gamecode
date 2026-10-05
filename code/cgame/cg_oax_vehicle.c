@@ -90,6 +90,8 @@ static vmCvar_t	cg_oaxVehHud;
 static vmCvar_t	cg_oaxVehClip;	/* 0: prediction ignores vehicles (a test control: mispredicts) */
 static vmCvar_t	cg_oaxVehView;	/* 0: by seat, 1: first person, 2: third person */
 static vmCvar_t	cg_oaxVehLookReturn;	/* ms without look input before a free look swings back */
+static vmCvar_t	cg_oaxVehHints;		/* the controls, shown for a while after taking a seat */
+static int		vehHintKey = -1, vehHintTime;
 
 /* each type's gun models and sound, registered once a map has the type */
 typedef struct {
@@ -184,6 +186,8 @@ void CG_OAXVehicleInit( void ) {
 	trap_Cvar_Register( &cg_oaxVehClip, "cg_oaxVehClip", "1", CVAR_CHEAT );
 	trap_Cvar_Register( &cg_oaxVehView, "cg_oaxVehView", "0", CVAR_ARCHIVE );
 	trap_Cvar_Register( &cg_oaxVehLookReturn, "cg_oaxVehLookReturn", "800", CVAR_ARCHIVE );
+	trap_Cvar_Register( &cg_oaxVehHints, "cg_oaxVehHints", "1", CVAR_ARCHIVE );
+	vehHintKey = -1;
 	/* the engine dropped the cgame's worlds with the VM */
 	memset( &vp, 0, sizeof( vp ) );
 	vp.baseTime = -1;
@@ -318,6 +322,20 @@ void CG_OAXToggleView_f( void ) {
 	trap_Cvar_Set( "cg_oaxVehView", CG_VehFirstPerson( cg_entities[num].currentState.generic1, seat ) ? "2" : "1" );
 }
 
+/* weapon <n> in a vehicle: seat n instead (oaxseat on the server); qtrue
+   when seated */
+qboolean CG_OAXVehicleSeatKey( int num ) {
+	int seat = 0;
+
+	if ( CG_VehSeat( &seat ) < 0 ) {
+		return qfalse;
+	}
+	if ( num >= 1 && num <= OAX_VEH_MAX_SEATS ) {
+		trap_SendClientCommand( va( "oaxseat %i", num ) );
+	}
+	return qtrue;
+}
+
 /* a player not to draw: the driver inside a cockpit */
 qboolean CG_OAXVehicleHidesPlayer( int clientNum ) {
 	int i, seat = 0, num;
@@ -401,7 +419,7 @@ static void CG_VehInputAt( int t, int cmdNum ) {
 			break;
 		}
 		if ( CG_VehCmdTime( &uc ) <= t ) {
-			BG_VehCmdToInput( &uc, &vp.input );
+			BG_VehCmdToInput( vp.type, &uc, &vp.input );
 			return;
 		}
 	}
@@ -1263,6 +1281,27 @@ void CG_OAXVehicleHUD( void ) {
 		CG_DrawStringExt( (int)( x + w ) - 4 - 6 * 8, (int)y + 4, "GUNNER", text, qtrue, qtrue, 8, 12, 0 );
 	}
 	BG_OAXDebugSet( "cg_veh_hud", va( "%i %i %i %i", num, seat, health, seat == OAX_VEH_SEAT_DRIVER ? speed : -1 ) );
+
+	/* the controls, for a few seconds after taking a seat (pad / keyboard) */
+	trap_Cvar_Update( &cg_oaxVehHints );
+	if ( num * OAX_VEH_MAX_SEATS + seat != vehHintKey ) {
+		vehHintKey = num * OAX_VEH_MAX_SEATS + seat;
+		vehHintTime = cg.time;
+	}
+	if ( cg_oaxVehHints.integer && cg.time - vehHintTime < 6000 && cg.time >= vehHintTime ) {
+		vec4_t hint = { 1, 1, 1, 0.85f };
+		const char *line;
+		int len;
+		if ( cg.time - vehHintTime > 5000 ) {
+			hint[3] *= ( 6000 - ( cg.time - vehHintTime ) ) / 1000.0f;
+		}
+		line = BG_VehGunSeat( cg_entities[num].currentState.generic1 ) == seat ?
+			"RT/MOUSE1 fire   A/SPACE seat   hold X/E get out   R3/V view" :
+			"A/SPACE switch seat   hold X/E get out   R3/V view";
+		len = CG_DrawStrlen( line );
+		CG_FillRect( 320 - len * 3.5f - 4, y - 32, len * 7 + 8, 14, back );
+		CG_DrawStringExt( (int)( 320 - len * 3.5f ), (int)y - 31, line, hint, qtrue, qfalse, 7, 12, 0 );
+	}
 
 	/* the gun's user: heat, or the reload, in a strip above the panel */
 	if ( BG_VehGunSeat( cg_entities[num].currentState.generic1 ) == seat ) {

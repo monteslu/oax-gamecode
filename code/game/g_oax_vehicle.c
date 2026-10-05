@@ -51,8 +51,9 @@ with prediction on or off.
   play is untouched.
 - Spawners: info_oax_vehicle, keys "type" (buggy, hover), "angle", "wait"
   (respawn seconds after the vehicle is destroyed, default 20).
-- Seats: the use button (+button2) gets in (driver first, then gunner) and
-  out. A driver steers with the movement keys or the left stick (forward
+- Seats: the use button (+button2) gets in (driver first, then gunner)
+  with a tap and out when held (VEH_EXIT_HOLD_MS); jump moves to the next
+  free seat, the client command oaxseat <n> to seat n. A driver steers with the movement keys or the left stick (forward
   = throttle, strafe = steer, jump = handbrake, crouch = brake); the
   gunner stands on the rear deck or the roof. Occupants carry the
   PMF_OAX_VEHICLE flag (pmove does not move them) and STAT_OAX_VEHICLE;
@@ -100,6 +101,7 @@ build (vehicle-parity).
 #define VEH_MAX_LAG			300		/* a human this far behind no longer holds the clock back */
 #define VEH_MAX_IMPULSES	64
 #define VEH_KNOCKBACK_SCALE	4.0f	/* impulse (kg u/s) per knockback point per g_knockback */
+#define VEH_EXIT_HOLD_MS	250		/* use held this long gets an occupant out (a tap gets in) */
 
 int		G_PhysWorld( void );		/* g_oax_phys.c: the level's authoritative world */
 void	trap_OAX_EntSetOBB( int entnum, const float *obb );	/* g_syscalls.asm */
@@ -149,6 +151,8 @@ typedef struct {
 	int			seat;
 	int			useHeld;
 	int			useEaten;		/* use got someone in or out: hidden from the game until released */
+	int			useDown;		/* command time use went down in a seat, 0 none */
+	int			jumpHeld;		/* jump (switch seats) last command */
 	int			lastRoadkill;
 } gVehClient_t;
 
@@ -175,7 +179,7 @@ static int		vehInSolid, vehFell, vehFrames, vehDrivenFrames, vehBotDrivenFrames,
 static float	vehDistance, vehBotDistance, vehMinZ;
 static unsigned	vehHash;
 static unsigned	vehDriveHash;
-static int		vehGunShots, vehGunHits, vehGunOverheats;
+static int		vehGunShots, vehGunHits, vehGunOverheats, vehSeatSwaps;
 static int		vehCheckpointVeh;	/* the vehicle slot the drive checkpoints follow, -1 */	/* every driven vehicle's state, times relative to its first driver */
 static int		vehNextHashTime;
 
@@ -604,7 +608,64 @@ static void G_VehEnter( gVehicle_t *v, int seat, gentity_t *ent, int time ) {
 		vehBotEnters++;
 	}
 	v->emptySince = 0;
+	gVehClients[cn].useDown = 0;
 	G_VehPlaceOccupant( v, seat, ent );
+}
+
+/* move an occupant to another free seat of its vehicle */
+static qboolean G_VehSwitchSeat( gVehicle_t *v, gentity_t *ent, int seat, int time ) {
+	gVehClient_t *vc = &gVehClients[ent->s.number];
+
+	if ( seat < 0 || seat >= BG_VehicleType( v->type )->numSeats || seat == vc->seat || v->occupant[seat] >= 0 ) {
+		return qfalse;
+	}
+	if ( vc->seat == OAX_VEH_SEAT_DRIVER ) {
+		oaxPhysVehicleInput_t parked;
+		G_VehParkedInput( &parked );
+		G_VehQueueInput( v, time, &parked );
+	}
+	v->occupant[vc->seat] = -1;
+	G_VehEnter( v, seat, ent, time );
+	/* a change of seat, not a way in */
+	vehEnters--;
+	if ( ent->r.svFlags & SVF_BOT ) {
+		vehBotEnters--;
+	}
+	vehSeatSwaps++;
+	return qtrue;
+}
+
+static void G_VehNextSeat( gVehicle_t *v, gentity_t *ent, int time ) {
+	int n = BG_VehicleType( v->type )->numSeats, k;
+
+	for ( k = 1; k < n; k++ ) {
+		if ( G_VehSwitchSeat( v, ent, ( gVehClients[ent->s.number].seat + k ) % n, time ) ) {
+			return;
+		}
+	}
+}
+
+/*
+=================
+G_OAXVehicleSeatCmd
+
+The client command oaxseat <n>: move to seat n (1 driver, 2 gunner) of the
+vehicle one is in, when it is free (the keyboard's number keys in a seat).
+=================
+*/
+void G_OAXVehicleSeatCmd( gentity_t *ent ) {
+	char arg[16];
+	gVehClient_t *vc;
+
+	if ( !gVehWorld || !ent->client || ent->s.number >= MAX_CLIENTS || ent->health <= 0 ) {
+		return;
+	}
+	vc = &gVehClients[ent->s.number];
+	if ( vc->veh < 0 || !gVehicles[vc->veh].inuse || gVehicles[vc->veh].dying ) {
+		return;
+	}
+	trap_Argv( 1, arg, sizeof( arg ) );
+	G_VehSwitchSeat( &gVehicles[vc->veh], ent, atoi( arg ) - 1, level.time );
 }
 
 /* take a client off its seat; place: find room beside the vehicle */
@@ -715,7 +776,7 @@ void G_OAXVehicleClientThink( gentity_t *ent, usercmd_t *ucmd ) {
 	int cn = ent->s.number;
 	gVehClient_t *vc;
 	gclient_t *cl = ent->client;
-	qboolean edge;
+	qboolean edge, jumpEdge;
 
 	if ( !gVehWorld || cn < 0 || cn >= MAX_CLIENTS ) {
 		return;
@@ -733,6 +794,8 @@ void G_OAXVehicleClientThink( gentity_t *ent, usercmd_t *ucmd ) {
 	}
 	edge = ( ucmd->buttons & BUTTON_USE_HOLDABLE ) && !vc->useHeld;
 	vc->useHeld = ( ucmd->buttons & BUTTON_USE_HOLDABLE ) != 0;
+	jumpEdge = ucmd->upmove > 0 && !vc->jumpHeld;
+	vc->jumpHeld = ucmd->upmove > 0;
 	if ( !vc->useHeld ) {
 		vc->useEaten = 0;
 	} else if ( vc->useEaten ) {
@@ -747,12 +810,25 @@ void G_OAXVehicleClientThink( gentity_t *ent, usercmd_t *ucmd ) {
 	}
 	if ( vc->veh >= 0 ) {
 		gVehicle_t *v = &gVehicles[vc->veh];
-		if ( edge && G_VehLeave( cn, qtrue, ucmd->serverTime ) ) {
+		/* out: use held a moment (a tap is how one gets in, and a held
+		   button never throws anyone out by accident) */
+		if ( edge ) {
+			vc->useDown = ucmd->serverTime;
+		} else if ( !vc->useHeld ) {
+			vc->useDown = 0;
+		}
+		if ( vc->useDown && !vc->useEaten && ucmd->serverTime - vc->useDown >= VEH_EXIT_HOLD_MS &&
+			G_VehLeave( cn, qtrue, ucmd->serverTime ) ) {
 			ucmd->buttons &= ~BUTTON_USE_HOLDABLE;
 			vc->useEaten = 1;
+			vc->useDown = 0;
 			return;
 		}
 		ucmd->buttons &= ~BUTTON_USE_HOLDABLE;
+		/* jump: the next free seat */
+		if ( jumpEdge ) {
+			G_VehNextSeat( v, ent, ucmd->serverTime );
+		}
 		if ( vc->seat == BG_VehGunSeat( v->type ) ) {
 			/* the mounted gun instead of the occupant's own weapon */
 			G_VehGunThink( v, ent, ucmd );
@@ -764,7 +840,7 @@ void G_OAXVehicleClientThink( gentity_t *ent, usercmd_t *ucmd ) {
 			}
 			{
 				oaxPhysVehicleInput_t in;
-				BG_VehCmdToInput( ucmd, &in );
+				BG_VehCmdToInput( v->type, ucmd, &in );
 				G_VehQueueInput( v, ucmd->serverTime, &in );
 			}
 			ucmd->buttons &= ~( BUTTON_ATTACK | BUTTON_GESTURE );
@@ -1429,6 +1505,7 @@ static void G_VehPublish( void ) {
 	BG_OAXDebugSetInt( "g_veh_gun_shots", vehGunShots );
 	BG_OAXDebugSetInt( "g_veh_gun_hits", vehGunHits );
 	BG_OAXDebugSetInt( "g_veh_gun_overheats", vehGunOverheats );
+	BG_OAXDebugSetInt( "g_veh_seat_swaps", vehSeatSwaps );
 	/* the first client: vehicle, seat, weapon, its ammo (seat tests) */
 	if ( g_entities[0].inuse && g_entities[0].client ) {
 		gclient_t *cl = g_entities[0].client;
@@ -1578,7 +1655,7 @@ void G_OAXVehicleInit( void ) {
 	trap_Cvar_Register( &g_oaxVehLog, "g_oaxVehLog", "0", 0 );
 	trap_Cvar_Register( &g_oaxVehSolid, "g_oaxVehSolid", "1", CVAR_CHEAT );
 	vehLateCmds = vehCmdLagMax = vehCrashes = vehGunnerShots = 0;
-	vehGunShots = vehGunHits = vehGunOverheats = 0;
+	vehGunShots = vehGunHits = vehGunOverheats = vehSeatSwaps = 0;
 	vehAheadCmds = vehHeldTicks = vehImpulseCount = vehCarried = vehPushed = vehBlockedPush = 0;
 	vehImpulseTotal = 0;
 	vehNumImpulses = 0;

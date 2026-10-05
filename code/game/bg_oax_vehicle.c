@@ -291,11 +291,18 @@ void BG_VehicleDef( int type, const vec3_t origin, const float *quat, oaxPhysVeh
 	def->flags = PHYS_VF_AUTOFLIP;
 }
 
-void BG_VehCmdToInput( const usercmd_t *cmd, oaxPhysVehicleInput_t *in ) {
+void BG_VehCmdToInput( int type, const usercmd_t *cmd, oaxPhysVehicleInput_t *in ) {
+	qboolean down = cmd->upmove < 0;
+
 	in->throttle = cmd->forwardmove / 127.0f;
 	in->steer = -cmd->rightmove / 127.0f;
-	in->handbrake = cmd->upmove > 0 ? 1.0f : 0.0f;
-	in->brake = cmd->upmove < 0 ? 1.0f : 0.0f;
+	if ( BG_VehicleType( type )->physType == VEH_HOVER ) {
+		in->handbrake = 0;
+		in->brake = down ? 1.0f : 0.0f;
+	} else {
+		in->handbrake = down ? 1.0f : 0.0f;
+		in->brake = 0;
+	}
 }
 
 void BG_VehOBB( int type, vec3_t axis[3], float *obb ) {

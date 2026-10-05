@@ -155,9 +155,10 @@ int		BG_VehGunSeat( int type );
 /* the physics vehicle of a type: the server's authoritative one and the
    cgame's predicted one are built by this one function */
 void	BG_VehicleDef( int type, const vec3_t origin, const float *quat, oaxPhysVehicleDef_t *def );
-/* a driver's command as vehicle controls (forward = throttle, strafe =
-   steer, jump = handbrake, crouch = brake) */
-void	BG_VehCmdToInput( const usercmd_t *cmd, oaxPhysVehicleInput_t *in );
+/* a driver's command as vehicle controls: forward = throttle (against the
+   motion it brakes), strafe = steer, crouch = the handbrake on wheels and
+   the brake on a hover craft (jump switches seats: g_oax_vehicle.c) */
+void	BG_VehCmdToInput( int type, const usercmd_t *cmd, oaxPhysVehicleInput_t *in );
 /* the collision box for G_OAX_ENT_SET_OBB / CG_OAX_CM_TEMP_OBB: center
    offset from the vehicle origin, axis, half extents (15 floats) */
 void	BG_VehOBB( int type, vec3_t axis[3], float *obb );

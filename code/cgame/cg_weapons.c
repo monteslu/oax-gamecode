@@ -3360,6 +3360,11 @@ void CG_Weapon_f( void )
 
 	num = atoi( CG_Argv( 1 ) );
 
+	// oax: in a vehicle the number keys pick seats
+	if ( CG_OAXVehicleSeatKey( num ) ) {
+		return;
+	}
+
 	if ( num < 1 || num > MAX_WEAPONS-1 ) {
 		return;
 	}

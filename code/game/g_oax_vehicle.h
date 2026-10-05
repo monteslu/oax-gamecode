@@ -45,6 +45,8 @@ void	G_OAXVehicleFrame( void );
 void	G_OAXVehicleShutdown( void );
 /* ClientThink_real, before pmove: enter/exit, seats, driving input */
 void	G_OAXVehicleClientThink( gentity_t *ent, usercmd_t *ucmd );
+/* the client command oaxseat <n> */
+void	G_OAXVehicleSeatCmd( gentity_t *ent );
 void	SP_info_oax_vehicle( gentity_t *ent );
 /* G_Damage: a hit or an explosion pushes a vehicle */
 void	G_OAXVehicleImpulse( gentity_t *veh, const vec3_t dir, const vec3_t point, int knockback );

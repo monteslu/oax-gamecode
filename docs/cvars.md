@@ -36,6 +36,7 @@ Flags: `serverinfo` (sent to clients), `latch` (takes effect on the next map),
 | `cg_oaxVehSnap` | 96 | archive | A prediction error over this many units snaps instead of blending (a teleport). |
 | `cg_oaxVehHud` | 1 | archive | The vehicle HUD: vehicle health for riders, speed for the driver, heat or reload for whoever has the gun. |
 | `cg_oaxVehView` | 0 | archive | The view from a vehicle seat: 0 by seat (cockpit drivers and gunners first person, drivers of open vehicles the chase camera), 1 first person, 2 the chase camera. `toggleview` switches it. |
+| `cg_oaxVehHints` | 1 | archive | A line of the vehicle controls, shown for a few seconds after taking a seat. |
 | `cg_oaxVehLookReturn` | 800 | archive | Milliseconds without look input before a seat without the gun swings its view back behind the vehicle. |
 | `cg_oaxGroundFx` | 1 | archive | Ground effects on maps whose worldspawn sets `oax_groundfx 1`: rings where players wade, vehicle dust, splashes and tyre tracks. |
 | `cg_oaxUnderwaterFog` | "" | archive | Overrides the view fog (`r g b density`) while the eye is in water, on maps whose worldspawn sets `oax_underwaterfog`; empty = the map's. |
@@ -93,7 +94,12 @@ directly.
 
 Gameplay command (cgame): `toggleview` switches first and third person: in
 a vehicle `cg_oaxVehView` (1 and 2), on foot `cg_thirdPerson`. The default
-pad binds put it on Y, the keyboard's on V.
+pad binds put it on the right stick click, the keyboard's on V. In a vehicle
+`weapon <n>` (the number keys) asks for seat n instead.
+
+Gameplay command (qagame, from the client): `oaxseat <n>` moves the player
+to seat n (1 driver, 2 gunner) of its vehicle when that seat is free. In a
+seat, jump moves to the next free seat, and use gets out when held.
 
 Client console (cgame):
 
