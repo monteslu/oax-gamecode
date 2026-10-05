@@ -12,7 +12,7 @@ Flags: `serverinfo` (sent to clients), `latch` (takes effect on the next map),
 
 | Cvar | Default | Flags | What it does |
 | --- | --- | --- | --- |
-| `g_oaxVehicles` | 0 | serverinfo, latch | Vehicle rule. 1 spawns vehicles from `info_oax_vehicle` spawners; 0 frees the spawners and classic play is untouched. |
+| `g_oaxVehicles` | 0 | serverinfo, latch | Vehicle rule. 1 spawns vehicles from `info_oax_vehicle` spawners (types `buggy`, `hover`, `apc` with a roof gunner, `hovertank`); 0 frees the spawners and classic play is untouched. |
 | `g_oaxTranslocator` | 0 | serverinfo, latch | Translocator rule. 1 gives every player a translocator in the grappling hook's slot. |
 | `g_oaxScripts` | 1 | | 0 never starts the map script VM (for cost comparisons). |
 | `g_scriptSeed` | 0 | | Seed (mixed with the map name) for the random numbers map scripts draw. |
@@ -83,6 +83,9 @@ Server console (qagame):
 Client command (cheat): `setviewpos x y z yaw pitch [roll]` places the
 player exactly (no lift, no teleporter push); the stock four-number form is
 unchanged.
+
+UI console: `ui_graphics` opens the graphics options (resolution, quality)
+directly.
 
 Client console (cgame):
 
