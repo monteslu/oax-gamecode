@@ -3460,6 +3460,8 @@ static void CG_DrawWarmup(void) {
 			s = "Domination";
 		} else if (cgs.gametype == GT_POSSESSION) {
 			s = "Possession";
+		} else if (cgs.gametype == GT_ASSAULT) {
+			s = "Assault";
 		} else {
 			s = "";
 		}
@@ -3617,6 +3619,7 @@ static void CG_Draw2D(stereoFrame_t stereoFrame) {
 
 			CG_DrawReward();
 			CG_OAXVehicleHUD();		// oax: the vehicle's health and speed (cg_oax_vehicle.c)
+			CG_OAXAssaultHUD();		// oax: Assault objectives and clock (cg_oax_assault.c)
 		}
 
 		if (cgs.gametype >= GT_TEAM && cgs.ffa_gt != 1) {

@@ -1807,6 +1807,11 @@ gentity_t *SelectCTFSpawnPoint ( team_t team, int teamstate, vec3_t origin, vec3
 {
 	gentity_t	*spot;
 
+	// oax: Assault spawns by role and by the objectives done
+	if ( g_gametype.integer == GT_ASSAULT && ( spot = G_OAXAssaultSpawnPoint( team, origin, angles ) ) != NULL ) {
+		return spot;
+	}
+
 	spot = SelectRandomTeamSpawnPoint ( teamstate, team );
 
 	if (!spot) {

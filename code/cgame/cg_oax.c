@@ -86,12 +86,14 @@ void CG_OAXInit( void ) {
 	CG_OAXRenderInit();
 	CG_PhysInit();			/* "physics": the cosmetic world, gibs, ragdolls */
 	CG_OAXVehicleInit();	/* own-vehicle prediction (cg_oax_vehicle.c) */
+	CG_OAXAssaultInit();	/* the Assault HUD (cg_oax_assault.c) */
 	CG_OAXFxInit();
 }
 
 /* CG_ConfigStringModified: oax configstrings (CS_OAX_*) */
 void CG_OAXConfigString( int num ) {
 	CG_OAXZoneConfigString( num );
+	CG_OAXAssaultConfigString( num );
 }
 
 /* after the scene's entities are added, before it is rendered */

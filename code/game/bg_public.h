@@ -131,6 +131,7 @@ typedef enum {
 	GT_DOUBLE_D,			// Double Domination
 	GT_DOMINATION,			// Standard domination 12
 	GT_POSSESSION,
+	GT_ASSAULT,			// oax: attack and defend objectives against the clock (g_oax_assault.c)
 	GT_MAX_GAME_TYPE
 	
 } gametype_t;

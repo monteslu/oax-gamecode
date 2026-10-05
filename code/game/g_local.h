@@ -1440,6 +1440,18 @@ void G_OAXRunFrameEnd( int levelTime );
 void G_OAXShutdown( int restart );
 void G_OAXPlaceExact( gentity_t *ent, const vec3_t origin, const vec3_t angles );	/* g_oax_place.c */
 void G_OAXVehicleSeatCmd( gentity_t *ent );	/* g_oax_vehicle.c: the client command oaxseat */
+/* g_oax_assault.c: Assault (GT_ASSAULT) */
+qboolean G_OAXAssaultActive( void );
+qboolean G_OAXAssaultLive( void );
+int G_OAXAssaultAttackers( void );
+qboolean G_OAXAssaultDamage( gentity_t *targ, gentity_t *attacker, int damage );
+gentity_t *G_OAXAssaultSpawnPoint( int team, vec3_t origin, vec3_t angles );
+void G_OAXAssaultClientThink( gentity_t *ent, usercmd_t *ucmd );
+qboolean G_OAXAssaultObjective( int i, vec3_t point, int *type, gentity_t **ent, float *radius );
+qboolean G_OAXAssaultGuardSpot( int n, vec3_t point );
+void G_OAXAssaultInit( int restart );
+void G_OAXAssaultFrame( void );
+void G_OAXAssaultShutdown( void );
 void G_OAXPlaceFrame( void );
 void G_OAXPlaceInit( void );
 void trap_OAX_DebugSet( const char *name, const char *value );

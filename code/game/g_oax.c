@@ -75,6 +75,7 @@ void G_OAXInit( int levelTime, int randomSeed, int restart ) {
 	G_OAXMoverInit();
 	G_OAXScriptInit( levelTime, randomSeed, restart );	/* "script" */
 	G_OAXVehicleInit();			/* "physics_vehicle", rule g_oaxVehicles */
+	G_OAXAssaultInit( restart );	/* g_gametype GT_ASSAULT */
 	G_OAXPlaceInit();			/* exact setviewpos read-back */
 }
 
@@ -90,6 +91,7 @@ void G_OAXRunFrame( int levelTime ) {
 	G_OAXVehicleFrameBegin();	/* vehicle controls, before the world steps */
 	G_OAXPhysFrame();			/* "physics": the level world, physscene */
 	G_OAXVehicleFrame();		/* vehicle entities and occupants from the step */
+	G_OAXAssaultFrame();		/* Assault objectives and rounds */
 }
 
 /* after every entity ran this frame (end of G_RunFrame) */
@@ -103,5 +105,6 @@ void G_OAXShutdown( int restart ) {
 	G_OAXScriptShutdown( restart );
 	G_OAXGuiShutdown();
 	G_OAXVehicleShutdown();
+	G_OAXAssaultShutdown();
 	G_OAXPhysShutdown();
 }

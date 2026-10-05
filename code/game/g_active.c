@@ -991,6 +991,7 @@ void ClientThink_real( gentity_t *ent ) {
 	// oax in-world GUIs: a player aiming at a GUI clicks it instead of firing
 	G_OAXGuiClientThink( ent, ucmd );
 	// oax vehicles: use gets in and out, a driver's moves drive
+	G_OAXAssaultClientThink( ent, ucmd );	// oax: use objectives take the use button first
 	G_OAXVehicleClientThink( ent, ucmd );
 
 	// Let go of the hook if we aren't firing

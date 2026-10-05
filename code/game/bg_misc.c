@@ -1851,6 +1851,9 @@ qboolean MatchesGametype(int gametype, const char* gametypeName) {
 		case GT_POSSESSION:
 			if (Q_strequal(gametypeName, "pos")) mayRead = qtrue;
 			break;
+		case GT_ASSAULT:
+			if (Q_strequal(gametypeName, "assault")) mayRead = qtrue;
+			break;
 	};
 	return mayRead;
 }

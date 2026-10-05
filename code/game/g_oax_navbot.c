@@ -53,6 +53,7 @@ clock, so a match plays the same on every build.
 #include "oax_public.h"
 #include "g_oax_nav.h"
 #include "g_oax_vehicle.h"
+#include "bg_oax_assault.h"
 
 #define NB_MAX_POINTS	32
 #define NB_REPATH_MS	1500
@@ -67,7 +68,9 @@ enum {
 	NBG_ENEMY_FLAG,		/* enemy flag at its base or dropped */
 	NBG_HOME,			/* carrying the enemy flag: our base */
 	NBG_CARRIER,		/* a client: enemy carrier to kill, or teammate to escort */
-	NBG_OWN_FLAG		/* our dropped flag: touch it to return it */
+	NBG_OWN_FLAG,		/* our dropped flag: touch it to return it */
+	NBG_OBJECTIVE,		/* Assault attacker: the first open objective */
+	NBG_GUARD			/* Assault defender: a defender spawn spot by the objectives */
 };
 
 typedef struct {
@@ -110,6 +113,11 @@ typedef struct {
 	float		aimErr[2];
 	int			aimTime;
 	int			wasDead;
+	/* Assault: the objective this bot attacks (type, centre, entity, use radius) */
+	int			objType;
+	vec3_t		objPoint;
+	int			objEnt;
+	float		objRadius;
 } navBot_t;
 
 static navBot_t	navBots[MAX_CLIENTS];
@@ -295,11 +303,49 @@ static void NB_SweepGoal( int clientNum, navBot_t *nb, const vec3_t origin ) {
 	}
 }
 
+/* Assault: attackers go for the first open objective, defenders hold the
+   defender spawn spots by the objectives (spread by their rank) */
+static qboolean NB_AssaultGoal( int clientNum, navBot_t *nb, gentity_t *ent ) {
+	gclient_t *cl = ent->client;
+	vec3_t point;
+	gentity_t *oent = NULL;
+	int type, count, rank;
+	float radius;
+
+	if ( !G_OAXAssaultActive() || ( cl->sess.sessionTeam != TEAM_RED && cl->sess.sessionTeam != TEAM_BLUE ) ) {
+		return qfalse;
+	}
+	if ( cl->sess.sessionTeam == G_OAXAssaultAttackers() ) {
+		if ( !G_OAXAssaultObjective( 0, point, &type, &oent, &radius ) ) {
+			return qfalse;
+		}
+		nb->objType = type;
+		nb->objEnt = oent ? oent->s.number : -1;
+		nb->objRadius = radius;
+		VectorCopy( point, nb->objPoint );
+		NB_SetGoal( nb, NBG_OBJECTIVE, nb->objEnt, point );
+		return qtrue;
+	}
+	rank = NB_TeamRank( clientNum, &count );
+	if ( !G_OAXAssaultGuardSpot( rank, point ) ) {
+		return qfalse;
+	}
+	nb->objType = -1;
+	NB_SetGoal( nb, NBG_GUARD, -1, point );
+	return qtrue;
+}
+
 static void NB_ChooseGoal( int clientNum, navBot_t *nb, gentity_t *ent ) {
 	gclient_t *cl = ent->client;
 	vec3_t origin;
 
 	VectorCopy( cl->ps.origin, origin );
+	if ( g_gametype.integer == GT_ASSAULT ) {
+		if ( NB_AssaultGoal( clientNum, nb, ent ) ) {
+			return;
+		}
+		nb->objType = -1;
+	}
 	if ( g_gametype.integer == GT_CTF &&
 		( cl->sess.sessionTeam == TEAM_RED || cl->sess.sessionTeam == TEAM_BLUE ) ) {
 		int ownPw = cl->sess.sessionTeam == TEAM_RED ? PW_REDFLAG : PW_BLUEFLAG;
@@ -682,7 +728,7 @@ static void NB_Think( int clientNum, int time ) {
 	float msec, maxTurn, len;
 	int j, mvx = 0, mvy = 0;
 	nbLinkOut_t lo;
-	qboolean fighting = qfalse;
+	qboolean fighting = qfalse, objShoot = qfalse, objUsing = qfalse;
 
 	msec = nb->lastTime ? (float)( time - nb->lastTime ) : 50.0f;
 	if ( msec <= 0 ) {
@@ -745,7 +791,8 @@ static void NB_Think( int clientNum, int time ) {
 		nb->goalTime = time;
 		NB_ChooseGoal( clientNum, nb, ent );
 	}
-	if ( nb->goalKind != NBG_NONE && HorizDist( origin, nb->goal ) < 32.0f && fabs( origin[2] + MINS_Z - nb->goal[2] ) < 64.0f ) {
+	if ( nb->goalKind != NBG_NONE && nb->goalKind != NBG_OBJECTIVE && nb->goalKind != NBG_GUARD &&
+		HorizDist( origin, nb->goal ) < 32.0f && fabs( origin[2] + MINS_Z - nb->goal[2] ) < 64.0f ) {
 		nbGoalsReached++;
 		if ( nb->goalKind == NBG_ITEM ) {
 			nbVisited[nb->goalEnt] = 1;
@@ -790,6 +837,29 @@ static void NB_Think( int clientNum, int time ) {
 			dir[0] = lo.target[0] - origin[0];
 			dir[1] = lo.target[1] - origin[1];
 		}
+	}
+	/* Assault: in range of the objective, stop and work it; a guard holds its spot */
+	if ( nb->link < 0 && nb->goalKind == NBG_OBJECTIVE ) {
+		float d = Distance( origin, nb->objPoint );
+		if ( nb->objType == OAX_ASO_USE && d < nb->objRadius + 48.0f ) {
+			VectorClear( dir );
+			nb->cmd.buttons |= BUTTON_USE_HOLDABLE;
+			objUsing = qtrue;
+		} else if ( nb->objType == OAX_ASO_DESTROY && d < 700.0f && nb->objEnt >= 0 ) {
+			trace_t tr;
+			vec3_t eye;
+			VectorCopy( origin, eye );
+			eye[2] += cl->ps.viewheight;
+			trap_Trace( &tr, eye, NULL, NULL, nb->objPoint, clientNum, MASK_SHOT );
+			if ( tr.entityNum == nb->objEnt ) {
+				objShoot = qtrue;
+				if ( d < 450.0f ) {
+					VectorClear( dir );
+				}
+			}
+		}
+	} else if ( nb->link < 0 && nb->goalKind == NBG_GUARD && HorizDist( origin, nb->goal ) < 48.0f ) {
+		VectorClear( dir );
 	}
 	len = sqrt( dir[0] * dir[0] + dir[1] * dir[1] );
 	if ( len > 0.001f ) {
@@ -849,6 +919,18 @@ stuckDone:
 			fabs( AngleSubtract( wanted[PITCH], nb->view[PITCH] ) ) < 12.0f && cl->ps.weapon == nb->cmd.weapon ) {
 			nb->cmd.buttons |= BUTTON_ATTACK;
 		}
+	} else if ( objShoot ) {
+		vec3_t eye, aim;
+		VectorCopy( origin, eye );
+		eye[2] += cl->ps.viewheight;
+		VectorSubtract( nb->objPoint, eye, aim );
+		vectoangles( aim, wanted );
+		NB_Turn( nb, wanted, maxTurn );
+		nb->cmd.weapon = NB_BestWeapon( cl );
+		if ( fabs( AngleSubtract( wanted[YAW], nb->view[YAW] ) ) < 10.0f &&
+			fabs( AngleSubtract( wanted[PITCH], nb->view[PITCH] ) ) < 10.0f && cl->ps.weapon == nb->cmd.weapon ) {
+			nb->cmd.buttons |= BUTTON_ATTACK;
+		}
 	} else if ( len > 0.001f ) {
 		wanted[PITCH] = 0;
 		wanted[YAW] = (float)( atan2( dir[1], dir[0] ) * 180.0 / M_PI );
@@ -863,7 +945,7 @@ stuckDone:
 		AngleVectors( yawOnly, fwd, right, NULL );
 		mvx = (int)( ( dir[0] * fwd[0] + dir[1] * fwd[1] ) * 127.0f );
 		mvy = (int)( ( dir[0] * right[0] + dir[1] * right[1] ) * 127.0f );
-	} else if ( fighting ) {
+	} else if ( fighting && !objUsing ) {
 		/* no goal: circle-strafe the enemy */
 		mvy = ( ( time / 1000 ) & 1 ) ? 127 : -127;
 	}

@@ -2073,6 +2073,11 @@ void CheckExitRules( void )
 		return;
 	}
 
+	// oax: Assault ends by its rounds (g_oax_assault.c), not by limits
+	if ( g_gametype.integer == GT_ASSAULT ) {
+		return;
+	}
+
 	// check for sudden death
 	if ( ScoreIsTied() ) {
 		// always wait for sudden death

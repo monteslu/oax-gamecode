@@ -115,6 +115,7 @@ MULTIPLAYER MENU (SERVER BROWSER)
 #define GAMES_DOUBLE_D			11
 #define GAMES_DOM                       12
 #define GAMES_POS                       13
+#define GAMES_ASSAULT                   14
 
 
 static const char *master_items[] = {
@@ -145,6 +146,7 @@ static const char *servertype_items[] = {
 	"Double Domination",
 	"Domination",
 	"Possession",
+	"Assault",
 	NULL
 };
 
@@ -173,6 +175,7 @@ static char* gamenames[] = {
 	"Double Domination",
 	"Domination",
 	"Possession",
+	"Assault",
 	"???",  // unknown
 	NULL
 };
@@ -731,6 +734,12 @@ static void ArenaServers_UpdateMenu( void ) {
 
 		case GAMES_POS:
 			if( servernodeptr->gametype != GT_POSSESSION ) {
+				continue;
+			}
+			break;
+
+		case GAMES_ASSAULT:
+			if( servernodeptr->gametype != GT_ASSAULT ) {
 				continue;
 			}
 			break;

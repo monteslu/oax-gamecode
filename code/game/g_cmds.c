@@ -1631,7 +1631,8 @@ static const char *gameNames[] = {
 	"Last Man Standing",
 	"Double Domination",
 	"Domination",
-	"Possession"
+	"Possession",
+	"Assault"
 };
 
 

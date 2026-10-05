@@ -1114,6 +1114,11 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 		}
 	}
 
+	// oax: Assault objectives take (or ignore) the hit themselves
+	if ( G_OAXAssaultDamage( targ, attacker, damage ) ) {
+		return;
+	}
+
 	// shootable doors / buttons don't actually have any health
 	if ( targ->s.eType == ET_MOVER ) {
 		if ( targ->use && targ->moverState == MOVER_POS1 ) {

@@ -1330,6 +1330,9 @@ const char *CG_GameTypeString(void)
 	else if ( cgs.gametype == GT_POSSESSION ) {
 		return "Possession";
 	}
+	else if ( cgs.gametype == GT_ASSAULT ) {
+		return "Assault";
+	}
 	return "";
 }
 static void CG_DrawGameType(rectDef_t *rect, float scale, vec4_t color, qhandle_t shader, int textStyle )

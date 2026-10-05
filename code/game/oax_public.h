@@ -209,6 +209,8 @@ typedef struct {
 #define CS_OAX_ULIGHTS      945   /* 945-1008: controlled realtime lights */
 #define CS_OAX_FXDECLS      1009  /* particle decl names of func_oax_emitter entities, space separated (index = s.generic1) */
 #define CS_OAX_TRAILS       1010  /* "entnum shader width life r g b a;" for each entity that asks for a trail */
+#define CS_OAX_ASSAULT      1011  /* Assault round state (info string; g_oax_assault.c) */
+#define CS_OAX_ASSAULTOBJ   1012  /* 1012-1019: Assault objectives, one info string each */
 
 /*
  * Script VM call records (layout shared with the engine's oax_script.h;

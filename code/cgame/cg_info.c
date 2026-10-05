@@ -277,6 +277,9 @@ void CG_DrawInformation( void ) {
 	case GT_POSSESSION:
 		s = "Possession";
 		break;
+	case GT_ASSAULT:
+		s = "Assault";
+		break;
 	default:
 		s = "Unknown Gametype";
 		break;

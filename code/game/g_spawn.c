@@ -187,6 +187,9 @@ void SP_misc_oax_skyportal(gentity_t *ent);
 void SP_func_oax_emitter( gentity_t *ent );
 void SP_misc_oax_terrain(gentity_t *ent);
 void SP_info_oax_vehicle(gentity_t *ent);
+void SP_func_oax_objective(gentity_t *ent);
+void SP_info_oax_assault_spawn(gentity_t *ent);
+void SP_info_oax_assault(gentity_t *ent);
 void SP_info_oax_route(gentity_t *ent);
 void SP_misc_portal_surface(gentity_t *ent);
 
@@ -290,6 +293,9 @@ spawn_t	spawns[] = {
 	{"func_oax_emitter", SP_func_oax_emitter},	/* oax particle emitter (g_oax_fx.c) */
 	{"misc_oax_terrain", SP_misc_oax_terrain},	/* baked into OAX_TERRAIN; nothing at run time */
 	{"info_oax_vehicle", SP_info_oax_vehicle},	/* vehicle spawner (g_oax_vehicle.c), rule g_oaxVehicles */
+	{"func_oax_objective", SP_func_oax_objective},	/* Assault objective (g_oax_assault.c) */
+	{"info_oax_assault_spawn", SP_info_oax_assault_spawn},	/* Assault spawn point */
+	{"info_oax_assault", SP_info_oax_assault},	/* Assault settings */
 	{"info_oax_route", SP_info_oax_route},		/* navigation route ends (g_oax_navlinks.c) */
 
 	{"shooter_rocket", SP_shooter_rocket},
@@ -465,7 +471,7 @@ void G_SpawnGEntityFromSpawnVars( void ) {
 	gentity_t	*ent;
 	char		*s, *value, *gametypeName;
 	static char *gametypeNames[] = {"ffa", "tournament", "single", "team", "ctf", "oneflag", "obelisk", "harvester", 
-	"elimination", "ctf", "lms", "dd", "dom", "pos"};
+	"elimination", "ctf", "lms", "dd", "dom", "pos", "assault"};
 
 	// get the next free entity
 	ent = G_Spawn();

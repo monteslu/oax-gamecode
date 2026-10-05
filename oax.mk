@@ -48,6 +48,7 @@ OAX_GSRC = \
   game/g_oax_fx \
   game/bg_oax_vehicle \
   game/g_oax_vehicle \
+  game/g_oax_assault \
   game/g_oax_vehbot \
   game/g_oax_navlinks \
   game/g_oax_teleport \
@@ -66,6 +67,7 @@ OAX_CGSRC = \
   cgame/cg_oax_render \
   cgame/bg_oax_vehicle \
   cgame/cg_oax_vehicle \
+  cgame/cg_oax_assault \
   cgame/bg_oax_phys \
   cgame/cg_oax_phys \
   cgame/cg_oax_skel \

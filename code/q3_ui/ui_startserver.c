@@ -110,6 +110,7 @@ static const char *gametype_items[] = {
 	"Double Domination",
 	"Domination",
 	"Possession",
+	"Assault",
 	NULL
 };
 
@@ -126,7 +127,8 @@ static int gametype_remap[] = {
 		GT_LMS, 		
 		GT_DOUBLE_D,
 		GT_DOMINATION,
-		GT_POSSESSION
+		GT_POSSESSION,
+		GT_ASSAULT
 };		
 
 static int gametype_remap2[] = {
@@ -235,6 +237,11 @@ static int GametypeBits( char *string ) {
                 
 		if( Q_strequal( token, "pos" ) ) {
 			bits |= 1 << GT_POSSESSION;
+			continue;
+		}
+
+		if( Q_strequal( token, "assault" ) ) {
+			bits |= 1 << GT_ASSAULT;
 			continue;
 		}
 	}
