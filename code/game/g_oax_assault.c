@@ -278,7 +278,7 @@ static void AS_Use( gentity_t *self, gentity_t *other, gentity_t *activator ) {
 /*QUAKED func_oax_objective (1 .5 0) ?
 An Assault objective (g_gametype GT_ASSAULT): see g_oax_assault.c.
 "type" destroy, reach, use or trigger; "id"; "name"; "order"; "final";
-"health"; "radius"; "usetime"; "message"; "target"; "call".
+"health"; "radius"; "usetime"; "message"; "target"; "call"; "model2" (an .md3 at the origin).
 */
 void SP_func_oax_objective( gentity_t *ent ) {
 	asObjective_t *o;
@@ -333,6 +333,10 @@ void SP_func_oax_objective( gentity_t *ent ) {
 			VectorCopy( ent->s.origin, ent->s.pos.trBase );
 			VectorCopy( ent->s.origin, ent->r.currentOrigin );
 			ent->s.pos.trType = TR_STATIONARY;
+			/* "model2": an .md3 drawn at the origin, the brushes its hitbox */
+			if ( ent->model2 && ent->model2[0] ) {
+				ent->s.modelindex2 = G_ModelIndex( ent->model2 );
+			}
 		}
 		trap_LinkEntity( ent );
 		VectorAdd( ent->r.absmin, ent->r.absmax, o->point );

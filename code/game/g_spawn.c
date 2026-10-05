@@ -231,6 +231,7 @@ spawn_t	spawns[] = {
 
 
 	{"info_null", SP_info_null},
+	{"misc_cubemap", SP_info_null},		// oax: a renderer reflection probe (oaxMetal), nothing in the game
 	{"info_notnull", SP_info_notnull},		// use target_position instead
 	{"info_camp", SP_info_camp},
 

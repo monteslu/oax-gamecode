@@ -84,6 +84,7 @@ A brush entity, or a point entity for reach and trigger objectives.
 | `health` | destroy: hit points (default 600) |
 | `radius` | use: how close to stand (default 96); a point reach objective: how close to get (default 128) |
 | `usetime` | use: seconds of holding use (default 4) |
+| `model2` | a solid objective: an `.md3` model drawn at the entity's `origin`; give the brushes `common/weapclip` to make them its invisible hitbox, and write them relative to the `origin` (q3map2 keeps them as written; the game adds the origin) |
 | `message` | announced to everyone when it is done |
 | `target`, `call` | fired when it is done: open doors (`func_door` with a `targetname` and `wait -1`), start a map script |
 
