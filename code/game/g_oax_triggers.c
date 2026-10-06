@@ -38,7 +38,9 @@ a per-entity generator so every build makes the same choices.
 
 New classnames:
   target_oax_script       "call" a script function when used
-  trigger_oax_count       fire after "count" activations ("repeat", "delay")
+  trigger_oax_count       fire after "count" activations ("repeat", "delay");
+                          target_oax_counter is the same (an imported UE1
+                          Counter: NumToCount uses, then its Event once)
   trigger_oax_timer       fire every "wait" +- "random" s while on ("start_on",
                           "delay", "onName", "offName"); use toggles
   trigger_oax_entityname  touch trigger for one named entity ("entityname",

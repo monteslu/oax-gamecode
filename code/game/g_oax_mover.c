@@ -53,6 +53,8 @@ func_oax_mover is new (keyframe movers, not from DOOM-3):
                        segment (default 0); accel_time / decel_time override
   glide_sine           1: sinusoidal acceleration (AccelDecelSine)
   stay_open            seconds to wait at the last key (default 2)
+  event                targetname used when it arrives at its last key (UE1
+                       Mover.Event: a switch that throws the doors once open)
   mode                 timed (default; use opens, waits, returns) | toggle |
                        bump (a player touching it opens it) | stand (a player
                        standing on it opens it) | trigger_control (use opens
@@ -131,6 +133,8 @@ typedef struct {
 	int     stayOpen, mode, encroach;
 	int     seq, key, from, goal, waitUntil;
 	int     sndStart, sndStop, sndLoop;
+	char    *event;     /* "event": used on arriving at the last key */
+	gentity_t *activator;
 	/* D3 idMover script state */
 	float   moveSpeed;
 	int     moveTime, accelTime, decelTime;
@@ -262,6 +266,16 @@ static void Seq_Arrive( gentity_t *ent, oaxMover_t *m, int endTime ) {
 	StopSound( ent, m );
 	m->seq = SEQ_IDLE;
 
+	/* "event": the targets of an opened mover (UE1 FinishedOpening) */
+	if ( m->event && m->key == m->numKeys - 1 ) {
+		gentity_t *t = NULL;
+		while ( ( t = G_Find( t, FOFS( targetname ), m->event ) ) != NULL ) {
+			if ( t != ent && t->use ) {
+				t->use( t, ent, m->activator ? m->activator : ent );
+			}
+		}
+	}
+
 	switch ( m->mode ) {
 	case MODE_LOOP:
 		m->seq = SEQ_WAITING;
@@ -336,8 +350,15 @@ static void Use_OAXMover( gentity_t *ent, gentity_t *other, gentity_t *activator
 	oaxMover_t *m = M( ent );
 
 	if ( m ) {
+		m->activator = activator;
 		Seq_Open( ent, m );
 	}
+}
+
+/* the targetname a func_oax_mover uses when it opens ("event"), or NULL */
+const char *G_OAXMoverEvent( gentity_t *ent ) {
+	oaxMover_t *m = M( ent );
+	return m && m->event && m->event[0] ? m->event : NULL;
 }
 
 static void Touch_OAXMover( gentity_t *ent, gentity_t *other, trace_t *trace ) {
@@ -960,6 +981,9 @@ void SP_func_oax_mover( gentity_t *ent ) {
 	G_SpawnInt( "glide_sine", "0", &m->sine );
 	G_SpawnFloat( "stay_open", "2", &f );
 	m->stayOpen = f * 1000.0f;
+	if ( G_SpawnString( "event", "", &s ) && s[0] ) {
+		m->event = G_NewString( s );
+	}
 
 	G_SpawnString( "mode", "timed", &s );
 	if ( !Q_stricmp( s, "toggle" ) ) {
