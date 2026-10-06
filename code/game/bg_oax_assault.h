@@ -45,6 +45,7 @@ Each objective is the info string CS_OAX_ASSAULTOBJ + i:
 #define BG_OAX_ASSAULT_H
 
 #define OAX_AS_MAX_OBJECTIVES	8
+#define OAX_AS_MAX_PARTS		8	// an objective's separate volumes the bots know (g_oax_assault.c)
 
 /* phases */
 #define OAX_AS_PRE		0	/* players are in; the clock starts shortly */

@@ -93,6 +93,8 @@ typedef struct {
 	int			state;
 	int			doneTime;
 	vec3_t		point;
+	vec3_t		parts[OAX_AS_MAX_PARTS];	/* the centres of its separate volumes (AS_FindParts) */
+	int			numParts;
 	char		sent[MAX_INFO_STRING];
 } asObjective_t;
 
@@ -275,6 +277,76 @@ static void AS_Use( gentity_t *self, gentity_t *other, gentity_t *activator ) {
 	}
 }
 
+/*
+An objective can be several separate volumes (UT's: a fort and a trigger
+that fires it 1200 units away; a target that is three cylinders): their
+overall centre may be empty space between them, where a bot would stand
+touching nothing. The parts: a grid over the bounds (cells up to 24
+units), each cell that touches the objective's brushes joining the part whose bounds it is within
+1.5 grid steps of; a part's point is its bounds' centre. Bots go for the
+part nearest by path (G_OAXAssaultObjectiveParts).
+*/
+static void AS_FindParts( asObjective_t *o ) {
+	gentity_t *ent = o->ent;
+	vec3_t pmins[OAX_AS_MAX_PARTS], pmaxs[OAX_AS_MAX_PARTS], step, p, a, b;
+	int n[3], i, j, k, d, q;
+
+	o->numParts = 0;
+	for ( d = 0; d < 3; d++ ) {
+		float size = ent->r.absmax[d] - ent->r.absmin[d];
+		n[d] = (int)( size / 24.0f ) + 1;
+		if ( n[d] > 24 ) n[d] = 24;
+		step[d] = size / n[d];
+	}
+	for ( i = 0; i < n[0]; i++ ) {
+		for ( j = 0; j < n[1]; j++ ) {
+			for ( k = 0; k < n[2]; k++ ) {
+				p[0] = ent->r.absmin[0] + ( i + 0.5f ) * step[0];
+				p[1] = ent->r.absmin[1] + ( j + 0.5f ) * step[1];
+				p[2] = ent->r.absmin[2] + ( k + 0.5f ) * step[2];
+				/* the whole cell, so a volume thinner than a step is not missed */
+				for ( d = 0; d < 3; d++ ) {
+					a[d] = p[d] - 0.5f * step[d];
+					b[d] = p[d] + 0.5f * step[d];
+				}
+				if ( !trap_EntityContact( a, b, ent ) ) {
+					continue;
+				}
+				for ( q = 0; q < o->numParts; q++ ) {
+					for ( d = 0; d < 3; d++ ) {
+						if ( p[d] < pmins[q][d] - 1.5f * step[d] || p[d] > pmaxs[q][d] + 1.5f * step[d] ) {
+							break;
+						}
+					}
+					if ( d == 3 ) {
+						break;
+					}
+				}
+				if ( q == o->numParts ) {
+					if ( o->numParts == OAX_AS_MAX_PARTS ) {
+						continue;
+					}
+					o->numParts++;
+					VectorCopy( p, pmins[q] );
+					VectorCopy( p, pmaxs[q] );
+				}
+				AddPointToBounds( p, pmins[q], pmaxs[q] );
+			}
+		}
+	}
+	for ( q = 0; q < o->numParts; q++ ) {
+		VectorAdd( pmins[q], pmaxs[q], o->parts[q] );
+		VectorScale( o->parts[q], 0.5f, o->parts[q] );
+	}
+	if ( !o->numParts ) {
+		VectorCopy( o->point, o->parts[0] );
+		o->numParts = 1;
+	}
+	if ( o->numParts > 1 ) {
+		G_Printf( "assault: %s has %i separate volumes\n", o->id, o->numParts );
+	}
+}
+
 /*QUAKED func_oax_objective (1 .5 0) ?
 An Assault objective (g_gametype GT_ASSAULT): see g_oax_assault.c.
 "type" destroy, reach, use or trigger; "id"; "name"; "order"; "final";
@@ -341,6 +413,7 @@ void SP_func_oax_objective( gentity_t *ent ) {
 		trap_LinkEntity( ent );
 		VectorAdd( ent->r.absmin, ent->r.absmax, o->point );
 		VectorScale( o->point, 0.5f, o->point );
+		AS_FindParts( o );
 	} else {
 		VectorCopy( ent->s.origin, o->point );
 		ent->r.svFlags |= SVF_NOCLIENT;
@@ -674,6 +747,7 @@ static void AS_Publish( void ) {
 			trap_SetConfigstring( CS_OAX_ASSAULTOBJ + i, buf );
 		}
 		BG_OAXDebugSet( va( "g_as_obj%i", i ), va( "%s %i %i %i %i", o->id, o->type, o->state, health, (int)( o->progress * 100.0f ) ) );
+		BG_OAXDebugSetInt( va( "g_as_parts%i", i ), o->numParts );
 	}
 	if ( g_entities[0].inuse && g_entities[0].client ) {
 		gclient_t *cl = g_entities[0].client;
@@ -855,6 +929,22 @@ qboolean G_OAXAssaultObjective( int i, vec3_t point, int *type, gentity_t **ent,
 		}
 	}
 	return qfalse;
+}
+
+/* for the bots: the separate volumes of an objective entity (AS_FindParts);
+   0 when it is not an objective */
+int G_OAXAssaultObjectiveParts( gentity_t *ent, vec3_t *out, int max ) {
+	int k, i;
+
+	for ( k = 0; k < asNumObj; k++ ) {
+		if ( asObj[k].ent == ent ) {
+			for ( i = 0; i < asObj[k].numParts && i < max; i++ ) {
+				VectorCopy( asObj[k].parts[i], out[i] );
+			}
+			return i;
+		}
+	}
+	return 0;
 }
 
 /*QUAKED info_oax_assault_defend (0 .5 1) (-16 -16 -24) (16 16 32)

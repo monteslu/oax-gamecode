@@ -1448,6 +1448,7 @@ qboolean G_OAXAssaultDamage( gentity_t *targ, gentity_t *attacker, int damage );
 gentity_t *G_OAXAssaultSpawnPoint( int team, vec3_t origin, vec3_t angles );
 void G_OAXAssaultClientThink( gentity_t *ent, usercmd_t *ucmd );
 qboolean G_OAXAssaultObjective( int i, vec3_t point, int *type, gentity_t **ent, float *radius );
+int G_OAXAssaultObjectiveParts( gentity_t *ent, vec3_t *out, int max );
 qboolean G_OAXAssaultGuardSpot( int n, vec3_t point );
 void G_OAXAssaultGateSpawn( gentity_t *ent );
 qboolean G_OAXAssaultGateOpen( gentity_t *trigger, gentity_t *player );

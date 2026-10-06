@@ -118,7 +118,12 @@ typedef struct {
 	vec3_t		objPoint;
 	int			objEnt;
 	float		objRadius;
+	vec3_t		objAim;		/* where a destroy objective shows from here (NB_ObjectiveAim) */
+	int			objAimTime;	/* when objAim was found, 0 none */
+	int			objRestUntil;	/* a partial path to the objective ended here: roam until then */
 } navBot_t;
+
+#define NB_OBJ_REST_MS	4000	/* how long a bot stuck at a partial path's end roams instead */
 
 static navBot_t	navBots[MAX_CLIENTS];
 static byte		nbVisited[MAX_GENTITIES];				/* item visited in this sweep round */
@@ -308,6 +313,49 @@ static void NB_SweepGoal( int clientNum, navBot_t *nb, const vec3_t origin ) {
 	}
 }
 
+/* Assault: an objective of several separate volumes (G_OAXAssaultObjectiveParts):
+   the one with the shortest complete path from here, else the one whose
+   partial path ends nearest it; point is left alone for a single volume */
+static void NB_NearestPart( int clientNum, navBot_t *nb, gentity_t *oent, vec3_t point ) {
+	static float pts[NB_MAX_POINTS * 3];
+	static int links[NB_MAX_POINTS];
+	vec3_t parts[OAX_AS_MAX_PARTS], feet;
+	gentity_t *ent = &g_entities[clientNum];
+	float best = -1;
+	int n, i, j, best_i = -1;
+
+	n = G_OAXAssaultObjectiveParts( oent, parts, OAX_AS_MAX_PARTS );
+	if ( n < 2 ) {
+		return;
+	}
+	VectorCopy( ent->client->ps.origin, feet );
+	feet[2] += MINS_Z;
+	for ( i = 0; i < n; i++ ) {
+		int flags = 0, np;
+		float len = 0;
+
+		np = trap_OAX_NavFindPathEx( feet, parts[i], pts, links, NB_MAX_POINTS, &flags, G_OAXNavInclude(),
+			G_OAXAssaultNavExclude( ent->client->sess.sessionTeam ) );
+		if ( np <= 0 ) {
+			continue;
+		}
+		for ( j = 1; j < np; j++ ) {
+			len += Distance( &pts[( j - 1 ) * 3], &pts[j * 3] );
+		}
+		if ( flags & OAX_NAV_PATH_PARTIAL ) {
+			/* complete paths first: a partial one counts from its end, far behind */
+			len = 1e6f + Distance( &pts[( np - 1 ) * 3], parts[i] );
+		}
+		if ( best < 0 || len < best ) {
+			best = len;
+			best_i = i;
+		}
+	}
+	if ( best_i >= 0 ) {
+		VectorCopy( parts[best_i], point );
+	}
+}
+
 /* Assault: attackers go for the first open objective, defenders hold the
    defender spawn spots by the objectives (spread by their rank) */
 static qboolean NB_AssaultGoal( int clientNum, navBot_t *nb, gentity_t *ent ) {
@@ -321,8 +369,17 @@ static qboolean NB_AssaultGoal( int clientNum, navBot_t *nb, gentity_t *ent ) {
 		return qfalse;
 	}
 	if ( cl->sess.sessionTeam == G_OAXAssaultAttackers() ) {
+		if ( level.time < nb->objRestUntil ) {
+			return qfalse;	/* the objective's path ended short here: roam a while */
+		}
 		if ( !G_OAXAssaultObjective( 0, point, &type, &oent, &radius ) ) {
 			return qfalse;
+		}
+		if ( oent ) {
+			NB_NearestPart( clientNum, nb, oent, point );
+		}
+		if ( ( oent ? oent->s.number : -1 ) != nb->objEnt ) {
+			nb->objAimTime = 0;		/* a new objective: find where it shows */
 		}
 		nb->objType = type;
 		nb->objEnt = oent ? oent->s.number : -1;
@@ -527,7 +584,79 @@ static void NB_Repath( int clientNum, navBot_t *nb, const vec3_t origin, int tim
 	if ( nb->numPts <= 0 || ( ( flags & OAX_NAV_PATH_PARTIAL ) && nb->goalKind == NBG_ITEM ) ) {
 		nbNoPath++;
 		NB_FailGoal( clientNum, nb );
+	} else if ( ( flags & OAX_NAV_PATH_PARTIAL ) && nb->goalKind == NBG_OBJECTIVE &&
+		Distance( feet, &nb->pts[( nb->numPts - 1 ) * 3] ) < 64.0f ) {
+		/* the navmesh gets no closer to the objective than where the bot
+		   stands (a dead end, an island): roam instead of pressing on it */
+		nbNoPath++;
+		NB_FailGoal( clientNum, nb );
+		nb->objRestUntil = time + NB_OBJ_REST_MS;
 	}
+}
+
+/* ---- objectives --------------------------------------------------------------------- */
+
+#define NB_AIM_MS 500	/* how long a found aim point holds before it is checked again */
+
+/*
+A point of a destroy objective the bot can hit from its eye: the objective's
+centre when that shows, else the nearest of a 3x3x3 grid over its bounds
+that does. An objective can be several brushes (UT's teamtriggers come as a
+union of cylinders) whose centre is inside one hidden behind a wall while
+another shows. qfalse when nothing shows. The answer holds NB_AIM_MS while
+the trace to it still hits.
+*/
+static qboolean NB_ObjectiveAim( navBot_t *nb, int clientNum, const vec3_t eye, int time ) {
+	static const float f[3] = { 0.5f, 0.15f, 0.85f };
+	gentity_t *oent;
+	trace_t tr;
+	float best = -1;
+	vec3_t p, found;
+	int i, j, k;
+
+	if ( nb->objEnt < 0 ) {
+		return qfalse;
+	}
+	oent = &g_entities[nb->objEnt];
+	if ( nb->objAimTime && time - nb->objAimTime < NB_AIM_MS ) {
+		trap_Trace( &tr, eye, NULL, NULL, nb->objAim, clientNum, MASK_SHOT );
+		if ( tr.entityNum == nb->objEnt ) {
+			return qtrue;
+		}
+	}
+	nb->objAimTime = 0;
+	trap_Trace( &tr, eye, NULL, NULL, nb->objPoint, clientNum, MASK_SHOT );
+	if ( tr.entityNum == nb->objEnt ) {
+		VectorCopy( nb->objPoint, nb->objAim );
+		nb->objAimTime = time;
+		return qtrue;
+	}
+	for ( i = 0; i < 3; i++ ) {
+		for ( j = 0; j < 3; j++ ) {
+			for ( k = 0; k < 3; k++ ) {
+				float d;
+
+				p[0] = oent->r.absmin[0] + ( oent->r.absmax[0] - oent->r.absmin[0] ) * f[i];
+				p[1] = oent->r.absmin[1] + ( oent->r.absmax[1] - oent->r.absmin[1] ) * f[j];
+				p[2] = oent->r.absmin[2] + ( oent->r.absmax[2] - oent->r.absmin[2] ) * f[k];
+				d = DistanceSquared( eye, p );
+				if ( best >= 0 && d >= best ) {
+					continue;
+				}
+				trap_Trace( &tr, eye, NULL, NULL, p, clientNum, MASK_SHOT );
+				if ( tr.entityNum == nb->objEnt ) {
+					best = d;
+					VectorCopy( p, found );
+				}
+			}
+		}
+	}
+	if ( best < 0 ) {
+		return qfalse;
+	}
+	VectorCopy( found, nb->objAim );
+	nb->objAimTime = time;
+	return qtrue;
 }
 
 /* ---- off-mesh links ------------------------------------------------------------------ */
@@ -874,12 +1003,10 @@ static void NB_Think( int clientNum, int time ) {
 			nb->cmd.buttons |= BUTTON_USE_HOLDABLE;
 			objUsing = qtrue;
 		} else if ( nb->objType == OAX_ASO_DESTROY && d < 700.0f && nb->objEnt >= 0 ) {
-			trace_t tr;
 			vec3_t eye;
 			VectorCopy( origin, eye );
 			eye[2] += cl->ps.viewheight;
-			trap_Trace( &tr, eye, NULL, NULL, nb->objPoint, clientNum, MASK_SHOT );
-			if ( tr.entityNum == nb->objEnt ) {
+			if ( NB_ObjectiveAim( nb, clientNum, eye, time ) ) {
 				objShoot = qtrue;
 				if ( d < 450.0f ) {
 					VectorClear( dir );
@@ -961,7 +1088,7 @@ stuckDone:
 		vec3_t eye, aim;
 		VectorCopy( origin, eye );
 		eye[2] += cl->ps.viewheight;
-		VectorSubtract( nb->objPoint, eye, aim );
+		VectorSubtract( nb->objAim, eye, aim );
 		vectoangles( aim, wanted );
 		NB_Turn( nb, wanted, maxTurn );
 		nb->cmd.weapon = NB_BestWeapon( cl );
