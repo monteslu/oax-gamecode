@@ -562,7 +562,11 @@ static void CG_Mover( centity_t *cent ) {
 	VectorCopy( cent->lerpOrigin, ent.oldorigin);
 	AnglesToAxis( cent->lerpAngles, ent.axis );
 
-	ent.renderfx = RF_NOSHADOW;
+	// oax: movers cast shadows (Q3 kept them out of its blob shadows; under
+	// unified lighting a door or a lift shadows what is behind it, as a
+	// source engine's baked lighting does). A material can still opt out
+	// with oaxNoShadow.
+	ent.renderfx = 0;
 
 	// flicker between two skins (FIXME?)
 	ent.skinNum = ( cg.time >> 6 ) & 1;
