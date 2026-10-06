@@ -71,6 +71,17 @@ static oaxNavLinkInfo_t	navLinks[OAX_NAV_MAX_LINKS];
 static int				numNavLinks;
 static int				navLinksBuilt;
 static float			navCost[MAX_GENTITIES];		/* "navcost" keys, read at spawn */
+
+/* navmesh obstacles: movers an objective opens (G_OAXNavBlockers) */
+#define NAV_MAX_BLOCKERS	64
+typedef struct {
+	int		ent;
+	int		index;		/* the engine's blocker */
+	vec3_t	origin, angles;	/* the spawn pose: on (blocking) while it is still there */
+	int		on;
+} navBlocker_t;
+static navBlocker_t	navBlockers[NAV_MAX_BLOCKERS];
+static int			numNavBlockers;
 static byte				navCostSet[MAX_GENTITIES];
 /* why the last G_OAXNavFloor failed: "solid", "no floor", "steep" */
 static const char *navFloorWhy;
@@ -93,6 +104,7 @@ void G_OAXNavLinksInit( void ) {
 	memset( navLinks, 0, sizeof( navLinks ) );
 	numNavLinks = 0;
 	navLinksBuilt = 0;
+	numNavBlockers = 0;
 	navSkipped[0] = 0;
 	navNumSkipped = 0;
 	navFloorWhy = "";
@@ -118,6 +130,7 @@ static const char *G_OAXNavKindName( int kind ) {
 	case OAX_NAV_JUMP: return "jump";
 	case OAX_NAV_DROP: return "drop";
 	case OAX_NAV_TRANSLOCATOR: return "translocator";
+	case OAX_NAV_SWIM: return "swim";
 	}
 	return "?";
 }
@@ -199,7 +212,8 @@ static void G_OAXNavAdd( int kind, const vec3_t start, const vec3_t end, float r
 	}
 	/* an Assault-gated teleporter's link carries a bit of its own, which
 	   bots it is closed to exclude (G_OAXAssaultNavExclude) */
-	idx = trap_OAX_NavAddLink( start, end, kind | ( kind == OAX_NAV_TELEPORT ? G_OAXAssaultGateNavBit( ent ) : 0 ), radius, bidir );
+	idx = trap_OAX_NavAddLink( start, end, ( kind == OAX_NAV_SWIM ? OAX_NAV_JUMP : kind ) |
+		( kind == OAX_NAV_TELEPORT ? G_OAXAssaultGateNavBit( ent ) : 0 ), radius, bidir );
 	if ( idx != numNavLinks ) {
 		return;		/* the engine is out of room: keep both lists in step */
 	}
@@ -420,6 +434,8 @@ void SP_info_oax_route( gentity_t *ent ) {
 		ent->count = OAX_NAV_TRANSLOCATOR;
 	} else if ( !Q_stricmp( kind, "drop" ) ) {
 		ent->count = OAX_NAV_DROP;
+	} else if ( !Q_stricmp( kind, "swim" ) ) {
+		ent->count = OAX_NAV_SWIM;
 	} else {
 		ent->count = OAX_NAV_JUMP;
 	}
@@ -435,6 +451,7 @@ static void G_OAXNavRouteLinks( void ) {
 	for ( i = MAX_CLIENTS; i < level.num_entities; i++ ) {
 		gentity_t *ent = &g_entities[i], *dest;
 		vec3_t start, end, o;
+		float reach;
 
 		if ( !ent->inuse || !ent->classname || Q_stricmp( ent->classname, "info_oax_route" ) || !ent->target ) {
 			continue;
@@ -444,15 +461,18 @@ static void G_OAXNavRouteLinks( void ) {
 			G_OAXNavSkip( "route", ent, "target", "not found" );
 			continue;
 		}
+		/* a swim end may float in deep water: the floor under it is the
+		   navmesh's (the bottom of a moat), farther down */
+		reach = ent->count == OAX_NAV_SWIM ? 768.0f : 256.0f;
 		VectorCopy( ent->s.origin, o );
 		o[2] += 24.0f;
-		if ( !G_OAXNavFloor( o, 256.0f, start ) ) {
+		if ( !G_OAXNavFloor( o, reach, start ) ) {
 			G_OAXNavSkip( "route", ent, "start", navFloorWhy );
 			continue;
 		}
 		VectorCopy( dest->s.origin, o );
 		o[2] += 24.0f;
-		if ( !G_OAXNavFloor( o, 256.0f, end ) ) {
+		if ( !G_OAXNavFloor( o, reach, end ) ) {
 			G_OAXNavSkip( "route", ent, "end", navFloorWhy );
 			continue;
 		}
@@ -500,11 +520,120 @@ static int G_OAXNavHazards( void ) {
 	return n;
 }
 
+/*
+Navmesh obstacles: movers an objective opens (a door, a portcullis, a
+shutter), found by following each func_oax_objective's targets through
+relays, counters and delays. While such a mover is still at its spawn pose
+(closed) its box is off the navmesh, so bots route around it (an Assault
+map's moat instead of its shut gate) rather than pressing on it; the
+engine rebuilds the tiles it covers when it moves off and back. Movers
+that open on a trigger a player walks into (a ramp, a lift) are not
+obstacles: bots must still walk there to open them; nor what the final
+objective sets off (the round ends: debris may sit on the floor bots need).
+*/
+static void G_OAXNavBlockMover( gentity_t *ent ) {
+	gentity_t *m;
+	int i;
+
+	/* a team of movers moves together: every piece is an obstacle */
+	for ( m = ent->teammaster ? ent->teammaster : ent; m; m = m->teamchain ) {
+		if ( numNavBlockers >= NAV_MAX_BLOCKERS ) {
+			return;
+		}
+		if ( !m->inuse || m->s.eType != ET_MOVER || !m->classname || !Q_stricmp( m->classname, "func_oax_objective" ) ) {
+			continue;
+		}
+		for ( i = 0; i < numNavBlockers && navBlockers[i].ent != m->s.number; i++ ) {
+		}
+		if ( i < numNavBlockers ) {
+			continue;	/* already one */
+		}
+		navBlockers[numNavBlockers].ent = m->s.number;
+		VectorCopy( m->r.currentOrigin, navBlockers[numNavBlockers].origin );
+		VectorCopy( m->r.currentAngles, navBlockers[numNavBlockers].angles );
+		navBlockers[numNavBlockers].index = trap_OAX_NavAddBlocker( m->r.absmin, m->r.absmax );
+		navBlockers[numNavBlockers].on = 1;
+		if ( navBlockers[numNavBlockers].index >= 0 ) {
+			numNavBlockers++;
+		}
+		if ( !ent->teammaster ) {
+			break;
+		}
+	}
+}
+
+static void G_OAXNavBlockTargets( const char *name, int depth ) {
+	gentity_t *t = NULL;
+
+	if ( !name || !name[0] || depth > 6 ) {
+		return;
+	}
+	while ( ( t = G_OAXNavNextTarget( t, name ) ) != NULL ) {
+		if ( t->s.eType == ET_MOVER && t->classname && Q_stricmp( t->classname, "func_oax_objective" ) ) {
+			G_OAXNavBlockMover( t );
+		}
+		/* on through relays, counters, delays, and movers that fire what they
+		   open when they arrive (a switch that throws the doors) */
+		if ( t->target && Q_stricmp( t->target, name ) ) {
+			G_OAXNavBlockTargets( t->target, depth + 1 );
+		}
+		if ( G_OAXMoverEvent( t ) && Q_stricmp( G_OAXMoverEvent( t ), name ) ) {
+			G_OAXNavBlockTargets( G_OAXMoverEvent( t ), depth + 1 );
+		}
+	}
+}
+
+static int G_OAXNavBlockers( void ) {
+	gentity_t *e = NULL;
+
+	while ( ( e = G_Find( e, FOFS( classname ), "func_oax_objective" ) ) != NULL ) {
+		if ( !G_OAXAssaultIsFinal( e ) ) {	/* the round is over when it opens */
+			G_OAXNavBlockTargets( e->target, 0 );
+		}
+	}
+	return numNavBlockers;
+}
+
+/* each frame: a blocker is on while its mover sits at its spawn pose */
+static void G_OAXNavBlockersFrame( void ) {
+	int i, changed = 0;
+
+	for ( i = 0; i < numNavBlockers; i++ ) {
+		navBlocker_t *b = &navBlockers[i];
+		gentity_t *m = &g_entities[b->ent];
+		int at = m->inuse && Distance( m->r.currentOrigin, b->origin ) < 1.0f &&
+			fabs( AngleSubtract( m->r.currentAngles[0], b->angles[0] ) ) < 1.0f &&
+			fabs( AngleSubtract( m->r.currentAngles[1], b->angles[1] ) ) < 1.0f &&
+			fabs( AngleSubtract( m->r.currentAngles[2], b->angles[2] ) ) < 1.0f;
+
+		if ( at != b->on ) {
+			b->on = at;
+			trap_OAX_NavSetBlocker( b->index, at );
+			changed++;
+		}
+	}
+	if ( changed || ( level.framenum % 20 ) == 0 ) {
+		char buf[128];
+		int n = 0;
+
+		buf[0] = 0;
+		for ( i = 0; i < numNavBlockers && n < (int)sizeof( buf ) - 8; i++ ) {
+			buf[n++] = navBlockers[i].on ? '1' : '0';
+			buf[n] = 0;
+		}
+		BG_OAXDebugSet( "g_nav_blockers", numNavBlockers ? buf : "-" );
+	}
+}
+
 /* once the level has settled: every jump pad has aimed (AimAtTarget runs a frame after spawn) */
 void G_OAXNavLinksFrame( void ) {
-	int pingpong, hazards, polys;
+	int pingpong, hazards, polys, blockers;
 
-	if ( navLinksBuilt || level.time < level.startTime + 300 ) {
+	if ( navLinksBuilt ) {
+		G_OAXNavBlockersFrame();
+		return;
+	}
+	if ( level.time < level.startTime + 300 ) {
 		return;
 	}
 	navLinksBuilt = 1;
@@ -516,7 +645,9 @@ void G_OAXNavLinksFrame( void ) {
 	G_OAXNavLadders();
 	G_OAXNavRouteLinks();
 	hazards = G_OAXNavHazards();
+	blockers = G_OAXNavBlockers();
 	polys = trap_OAX_NavCommit();
+	BG_OAXDebugSetInt( "g_nav_blocker_count", blockers );
 	BG_OAXDebugSetInt( "g_nav_links", numNavLinks );
 	BG_OAXDebugSetInt( "g_nav_links_skipped_count", navNumSkipped );
 	BG_OAXDebugSet( "g_nav_links_skipped", navSkipped[0] ? navSkipped : "-" );

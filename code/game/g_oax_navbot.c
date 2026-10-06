@@ -313,19 +313,63 @@ static void NB_SweepGoal( int clientNum, navBot_t *nb, const vec3_t origin ) {
 	}
 }
 
-/* Assault: an objective of several separate volumes (G_OAXAssaultObjectiveParts):
-   the one with the shortest complete path from here, else the one whose
-   partial path ends nearest it; point is left alone for a single volume */
-static void NB_NearestPart( int clientNum, navBot_t *nb, gentity_t *oent, vec3_t point ) {
+/* Assault: where to go for an objective of one or more separate volumes
+   (G_OAXAssaultObjectiveParts): the part with the shortest complete path
+   from here, else the one whose partial path ends nearest it. point becomes
+   that part's centre (range and aim); goal the place to walk to: the part
+   itself, or for a destroy objective the navmesh nearest it (a target can
+   hang on a wall or fill a room, its centre off the floor; bots only need
+   to get in range and in sight) */
+#define NB_OBJ_SNAP_XY	384.0f
+#define NB_OBJ_SNAP_Z	512.0f
+static float *NB_NearestOf( vec3_t *pts, int n, const vec3_t p ) {
+	int i, b = 0;
+
+	for ( i = 1; i < n; i++ ) {
+		if ( DistanceSquared( pts[i], p ) < DistanceSquared( pts[b], p ) ) {
+			b = i;
+		}
+	}
+	return pts[b];
+}
+
+static void NB_NearestPart( int clientNum, navBot_t *nb, gentity_t *oent, int type, vec3_t point, vec3_t goal ) {
 	static float pts[NB_MAX_POINTS * 3];
 	static int links[NB_MAX_POINTS];
-	vec3_t parts[OAX_AS_MAX_PARTS], feet;
+#define NB_GOALS ( OAX_AS_MAX_PARTS > 8 ? OAX_AS_MAX_PARTS : 8 )
+	vec3_t parts[OAX_AS_MAX_PARTS], goals[NB_GOALS], feet;
 	gentity_t *ent = &g_entities[clientNum];
 	float best = -1;
-	int n, i, j, best_i = -1;
+	int n, np0, i, j, best_i = -1, spots = 0;
 
-	n = G_OAXAssaultObjectiveParts( oent, parts, OAX_AS_MAX_PARTS );
+	VectorCopy( point, goal );
+	np0 = n = G_OAXAssaultObjectiveParts( oent, parts, OAX_AS_MAX_PARTS );
+	if ( n < 1 ) {
+		return;
+	}
+	/* a destroy objective's firing spots (info_oax_assault_attack), when the
+	   map has them: where its own players stood to shoot it */
+	if ( type == OAX_ASO_DESTROY ) {
+		spots = G_OAXAssaultAttackSpots( oent, goals, NB_GOALS );
+	}
+	if ( spots > 0 ) {
+		n = spots;
+	} else {
+		for ( i = 0; i < n; i++ ) {
+			vec3_t ext = { NB_OBJ_SNAP_XY, NB_OBJ_SNAP_XY, NB_OBJ_SNAP_Z };
+
+			if ( type != OAX_ASO_DESTROY || !trap_OAX_NavNearest( parts[i], ext, goals[i] ) ) {
+				VectorCopy( parts[i], goals[i] );
+			}
+		}
+	}
 	if ( n < 2 ) {
+		if ( spots ) {
+			VectorCopy( NB_NearestOf( parts, np0, goals[0] ), point );
+		} else {
+			VectorCopy( parts[0], point );
+		}
+		VectorCopy( goals[0], goal );
 		return;
 	}
 	VectorCopy( ent->client->ps.origin, feet );
@@ -334,7 +378,7 @@ static void NB_NearestPart( int clientNum, navBot_t *nb, gentity_t *oent, vec3_t
 		int flags = 0, np;
 		float len = 0;
 
-		np = trap_OAX_NavFindPathEx( feet, parts[i], pts, links, NB_MAX_POINTS, &flags, G_OAXNavInclude(),
+		np = trap_OAX_NavFindPathEx( feet, goals[i], pts, links, NB_MAX_POINTS, &flags, G_OAXNavInclude(),
 			G_OAXAssaultNavExclude( ent->client->sess.sessionTeam ) );
 		if ( np <= 0 ) {
 			continue;
@@ -344,7 +388,7 @@ static void NB_NearestPart( int clientNum, navBot_t *nb, gentity_t *oent, vec3_t
 		}
 		if ( flags & OAX_NAV_PATH_PARTIAL ) {
 			/* complete paths first: a partial one counts from its end, far behind */
-			len = 1e6f + Distance( &pts[( np - 1 ) * 3], parts[i] );
+			len = 1e6f + Distance( &pts[( np - 1 ) * 3], goals[i] );
 		}
 		if ( best < 0 || len < best ) {
 			best = len;
@@ -352,15 +396,65 @@ static void NB_NearestPart( int clientNum, navBot_t *nb, gentity_t *oent, vec3_t
 		}
 	}
 	if ( best_i >= 0 ) {
-		VectorCopy( parts[best_i], point );
+		/* aim at the part nearest the spot taken */
+		if ( spots ) {
+			VectorCopy( NB_NearestOf( parts, np0, goals[best_i] ), point );
+		} else {
+			VectorCopy( parts[best_i], point );
+		}
+		VectorCopy( goals[best_i], goal );
 	}
+}
+
+/* a defender's post: the rank-th of the active posts this bot can reach by a
+   complete path (a post behind a door that has not opened yet, or on a
+   wall-walk too narrow for the navmesh, is skipped), in the posts' order;
+   with none reachable, the rank-th post as the map lists them */
+#define NB_GUARD_CANDIDATES 24
+static qboolean NB_GuardSpot( int clientNum, int rank, vec3_t point ) {
+	static float pts[NB_MAX_POINTS * 3];
+	static int links[NB_MAX_POINTS];
+	vec3_t spots[NB_GUARD_CANDIDATES], feet;
+	gentity_t *ent = &g_entities[clientNum];
+	int n, i, reachable = 0, pick;
+
+	n = G_OAXAssaultGuardSpots( spots, NB_GUARD_CANDIDATES );
+	if ( n <= 0 ) {
+		return G_OAXAssaultGuardSpot( rank, point );
+	}
+	if ( rank < 0 ) {
+		rank = 0;
+	}
+	VectorCopy( ent->client->ps.origin, feet );
+	feet[2] += MINS_Z;
+	for ( i = 0; i < n; i++ ) {
+		int flags = 0;
+
+		if ( trap_OAX_NavFindPathEx( feet, spots[i], pts, links, NB_MAX_POINTS, &flags, G_OAXNavInclude(),
+			G_OAXAssaultNavExclude( ent->client->sess.sessionTeam ) ) > 0 && !( flags & OAX_NAV_PATH_PARTIAL ) ) {
+			reachable++;
+		} else {
+			spots[i][0] = spots[i][1] = spots[i][2] = 1e9f;	/* out */
+		}
+	}
+	if ( !reachable ) {
+		return G_OAXAssaultGuardSpot( rank, point );
+	}
+	pick = rank % reachable;
+	for ( i = 0; i < n; i++ ) {
+		if ( spots[i][0] < 1e8f && pick-- == 0 ) {
+			VectorCopy( spots[i], point );
+			return qtrue;
+		}
+	}
+	return G_OAXAssaultGuardSpot( rank, point );
 }
 
 /* Assault: attackers go for the first open objective, defenders hold the
    defender spawn spots by the objectives (spread by their rank) */
 static qboolean NB_AssaultGoal( int clientNum, navBot_t *nb, gentity_t *ent ) {
 	gclient_t *cl = ent->client;
-	vec3_t point;
+	vec3_t point, goal;
 	gentity_t *oent = NULL;
 	int type, count, rank;
 	float radius;
@@ -375,8 +469,9 @@ static qboolean NB_AssaultGoal( int clientNum, navBot_t *nb, gentity_t *ent ) {
 		if ( !G_OAXAssaultObjective( 0, point, &type, &oent, &radius ) ) {
 			return qfalse;
 		}
+		VectorCopy( point, goal );
 		if ( oent ) {
-			NB_NearestPart( clientNum, nb, oent, point );
+			NB_NearestPart( clientNum, nb, oent, type, point, goal );
 		}
 		if ( ( oent ? oent->s.number : -1 ) != nb->objEnt ) {
 			nb->objAimTime = 0;		/* a new objective: find where it shows */
@@ -385,11 +480,11 @@ static qboolean NB_AssaultGoal( int clientNum, navBot_t *nb, gentity_t *ent ) {
 		nb->objEnt = oent ? oent->s.number : -1;
 		nb->objRadius = radius;
 		VectorCopy( point, nb->objPoint );
-		NB_SetGoal( nb, NBG_OBJECTIVE, nb->objEnt, point );
+		NB_SetGoal( nb, NBG_OBJECTIVE, nb->objEnt, goal );
 		return qtrue;
 	}
 	rank = NB_TeamRank( clientNum, &count );
-	if ( !G_OAXAssaultGuardSpot( rank, point ) ) {
+	if ( !NB_GuardSpot( clientNum, rank, point ) ) {
 		return qfalse;
 	}
 	nb->objType = -1;
@@ -816,6 +911,33 @@ static void NB_LinkStep( navBot_t *nb, gentity_t *ent, int time, nbLinkOut_t *ou
 			NB_LinkEnd( nb, 0 );
 		}
 		return;
+
+	case OAX_NAV_SWIM: {
+		/* swim to the end in three dimensions: water moves along the view
+		   (pitch included), jump rises; a dive goes down the same way */
+		vec3_t eye, d;
+		float h;
+
+		VectorCopy( origin, eye );
+		eye[2] += cl->ps.viewheight;
+		VectorSubtract( l->end, eye, d );
+		d[2] += 24.0f;		/* aim a little over the far floor: the bank's lip */
+		h = sqrt( d[0] * d[0] + d[1] * d[1] );
+		VectorCopy( l->end, out->target );
+		out->hasTarget = 1;
+		out->ownView = 1;
+		out->view[YAW] = (float)( atan2( d[1], d[0] ) * 180.0 / M_PI );
+		out->view[PITCH] = (float)( -atan2( d[2], h > 1.0f ? h : 1.0f ) * 180.0 / M_PI );
+		if ( ent->waterlevel >= 1 && l->end[2] > feet[2] + 8.0f ) {
+			out->jump = 1;	/* up: to the surface, out onto the bank */
+		}
+		if ( onGround && Distance( feet, l->end ) < 64.0f ) {
+			NB_LinkEnd( nb, 1 );
+		} else if ( elapsed > 15000 ) {
+			NB_LinkEnd( nb, 0 );
+		}
+		return;
+	}
 
 	case OAX_NAV_TRANSLOCATOR: {
 		vec3_t eye, target;

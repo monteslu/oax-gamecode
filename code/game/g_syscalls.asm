@@ -244,6 +244,8 @@ equ trap_OAX_NavAddLink					-1095
 equ trap_OAX_NavAddArea					-1096
 equ trap_OAX_NavCommit					-1097
 equ trap_OAX_NavFindPathEx				-1098
+equ trap_OAX_NavAddBlocker				-1099
+equ trap_OAX_NavSetBlocker				-1100
 equ trap_OAX_EntSetOBB					-1101
 equ trap_OAX_ScriptInit					-1011
 equ trap_OAX_ScriptRegisterEvent		-1012

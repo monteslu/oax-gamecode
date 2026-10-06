@@ -866,6 +866,14 @@ int trap_OAX_NavCommit( void ) {
 	return syscall( G_OAX_NAV_COMMIT );
 }
 
+int trap_OAX_NavAddBlocker( const vec3_t mins, const vec3_t maxs ) {
+	return syscall( G_OAX_NAV_ADDBLOCKER, mins, maxs );
+}
+
+int trap_OAX_NavSetBlocker( int index, int on ) {
+	return syscall( G_OAX_NAV_SETBLOCKER, index, on );
+}
+
 int trap_OAX_NavFindPathEx( const vec3_t start, const vec3_t goal, float *points, int *links, int maxPoints, int *flags,
 	int include, int exclude ) {
 	return syscall( G_OAX_NAV_FINDPATHEX, start, goal, points, links, maxPoints, flags, include, exclude );

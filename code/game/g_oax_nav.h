@@ -45,6 +45,10 @@ Where AAS exists, the stock bots run unchanged.
 #define OAX_NAV_JUMP			0x0080
 #define OAX_NAV_DROP			0x0100
 #define OAX_NAV_TRANSLOCATOR	0x1000	/* rule-gated: g_oaxTranslocator */
+/* a swim route (info_oax_route kind swim): the game's own kind, given to the
+   engine as a jump (the navmesh's 16 flag bits are all in use; a swim is
+   filtered as a jump is) */
+#define OAX_NAV_SWIM			0x10000
 #define OAX_NAV_DEFAULT			( OAX_NAV_WALK | OAX_NAV_HAZARD | OAX_NAV_TELEPORT | OAX_NAV_JUMPPAD | \
 								  OAX_NAV_LADDER | OAX_NAV_JUMP | OAX_NAV_DROP )
 
@@ -58,6 +62,8 @@ int trap_OAX_NavRandomPoint( int seed, vec3_t out );
 int trap_OAX_NavAddLink( const vec3_t start, const vec3_t end, int kind, float radius, int bidir );
 int trap_OAX_NavAddArea( const vec3_t mins, const vec3_t maxs, float cost );
 int trap_OAX_NavCommit( void );
+int trap_OAX_NavAddBlocker( const vec3_t mins, const vec3_t maxs );
+int trap_OAX_NavSetBlocker( int index, int on );
 int trap_OAX_NavFindPathEx( const vec3_t start, const vec3_t goal, float *points, int *links, int maxPoints, int *flags,
 	int include, int exclude );
 

@@ -102,6 +102,9 @@ static asObjective_t	asObj[OAX_AS_MAX_OBJECTIVES];
 #define AS_MAX_DEFEND	64
 static gentity_t		*asDefend[AS_MAX_DEFEND];	/* info_oax_assault_defend posts */
 static int				asNumDefend;
+#define AS_MAX_ATTACK	64
+static gentity_t		*asAttack[AS_MAX_ATTACK];	/* info_oax_assault_attack firing spots */
+static int				asNumAttack;
 static int				asNumObj;
 static int				asTimeKey;		/* info_oax_assault "time", 0 none */
 static char				asBriefing[128];
@@ -199,6 +202,7 @@ static char *AS_Clock( int ms, char *buf, int size ) {
 }
 
 static void AS_EndRound( int outcome );
+static void AS_CheckPostIds( void );
 
 /* the attackers completed an objective */
 static void AS_Complete( asObjective_t *o, gentity_t *activator ) {
@@ -812,6 +816,7 @@ void G_OAXAssaultFrame( void ) {
 	}
 	ms = level.time - level.previousTime;
 	if ( as.phase == OAX_AS_PRE && level.time >= as.start ) {
+		AS_CheckPostIds();
 		as.phase = OAX_AS_LIVE;
 		for ( i = 0; i < level.maxclients; i++ ) {
 			gclient_t *cl = &level.clients[i];
@@ -879,6 +884,7 @@ void G_OAXAssaultFrame( void ) {
 void G_OAXAssaultShutdown( void ) {
 	memset( asGates, 0, sizeof( asGates ) );
 	asNumDefend = 0;
+	asNumAttack = 0;
 	asGateBitsUsed = 0;
 	asNumObj = 0;
 	asTimeKey = 0;
@@ -931,6 +937,18 @@ qboolean G_OAXAssaultObjective( int i, vec3_t point, int *type, gentity_t **ent,
 	return qfalse;
 }
 
+/* an objective entity that wins the round: what it opens never matters to play */
+qboolean G_OAXAssaultIsFinal( gentity_t *ent ) {
+	int k;
+
+	for ( k = 0; k < asNumObj; k++ ) {
+		if ( asObj[k].ent == ent ) {
+			return asObj[k].final ? qtrue : qfalse;
+		}
+	}
+	return qfalse;
+}
+
 /* for the bots: the separate volumes of an objective entity (AS_FindParts);
    0 when it is not an objective */
 int G_OAXAssaultObjectiveParts( gentity_t *ent, vec3_t *out, int max ) {
@@ -966,11 +984,76 @@ void SP_info_oax_assault_defend( gentity_t *ent ) {
 	asDefend[asNumDefend++] = ent;
 }
 
+/* once the map has spawned: posts and firing spots naming no objective */
+static void AS_CheckPostIds( void ) {
+	int i;
+
+	for ( i = 0; i < asNumDefend; i++ ) {
+		if ( asDefend[i]->message && asDefend[i]->message[0] && !AS_OfId( asDefend[i]->message ) ) {
+			G_Printf( S_COLOR_YELLOW "assault: info_oax_assault_defend at %s names no objective: \"%s\"\n", vtos( asDefend[i]->s.origin ), asDefend[i]->message );
+		}
+	}
+	for ( i = 0; i < asNumAttack; i++ ) {
+		if ( asAttack[i]->message && asAttack[i]->message[0] && !AS_OfId( asAttack[i]->message ) ) {
+			G_Printf( S_COLOR_YELLOW "assault: info_oax_assault_attack at %s names no objective: \"%s\"\n", vtos( asAttack[i]->s.origin ), asAttack[i]->message );
+		}
+	}
+}
+
+/*QUAKED info_oax_assault_attack (1 .5 0) (-16 -16 -24) (16 16 32)
+Where attacking bots stand to shoot a destroy objective (a target on a wall
+reached from outside, say): "objective" its id, "priority" (lower first,
+default 0). Bots take the reachable one with the shortest path; without
+any, the floor nearest the target.
+*/
+void SP_info_oax_assault_attack( gentity_t *ent ) {
+	char *s;
+
+	if ( g_gametype.integer != GT_ASSAULT || asNumAttack >= AS_MAX_ATTACK ) {
+		G_FreeEntity( ent );
+		return;
+	}
+	G_SpawnString( "objective", "", &s );
+	ent->message = G_NewString( s );
+	G_SpawnInt( "priority", "0", &ent->count );
+	ent->r.svFlags |= SVF_NOCLIENT;
+	asAttack[asNumAttack++] = ent;
+}
+
+/* for the attacking bots: an objective entity's firing spots (origins, the
+   lowest priority present only); 0 when it has none */
+int G_OAXAssaultAttackSpots( gentity_t *oent, vec3_t *out, int max ) {
+	asObjective_t *o = AS_OfEnt( oent );
+	int i, n = 0, best = 0x7fffffff;
+
+	if ( !o ) {
+		return 0;
+	}
+	for ( i = 0; i < asNumAttack; i++ ) {
+		if ( asAttack[i]->inuse && !Q_stricmp( asAttack[i]->message, o->id ) && asAttack[i]->count < best ) {
+			best = asAttack[i]->count;
+		}
+	}
+	for ( i = 0; i < asNumAttack && n < max; i++ ) {
+		if ( asAttack[i]->inuse && !Q_stricmp( asAttack[i]->message, o->id ) && asAttack[i]->count == best ) {
+			VectorCopy( asAttack[i]->s.origin, out[n] );
+			n++;
+		}
+	}
+	return n;
+}
+
+/* a post is held while its objective is under attack (open: not still locked
+   behind an earlier one, not fallen), as UT's bots defend the fort in play;
+   a post naming no objective is held whenever its after/until allow */
 static qboolean AS_DefendActive( gentity_t *ent ) {
 	asObjective_t *o;
 
-	if ( ent->message && ent->message[0] && ( o = AS_OfId( ent->message ) ) && o->state == OAX_ASOS_DONE ) {
-		return qfalse;
+	if ( ent->message && ent->message[0] ) {
+		o = AS_OfId( ent->message );
+		if ( !o || o->state != OAX_ASOS_ACTIVE ) {
+			return qfalse;
+		}
 	}
 	return G_OAXAssaultStageOpen( ent );
 }
@@ -978,6 +1061,35 @@ static qboolean AS_DefendActive( gentity_t *ent ) {
 /* for the defending bots: their n-th post, the floor under it. The map's
    info_oax_assault_defend posts when any is active (lower priority first,
    then the order in the map), else the active defender spawn spots */
+/* the active posts in order (priority, then the map's order), or the active
+   defender spawn spots when there are none; the floor under each */
+int G_OAXAssaultGuardSpots( vec3_t *out, int max ) {
+	gentity_t *spots[64], *spot = NULL;
+	int count = 0, i, k;
+
+	for ( i = 0; i < asNumDefend && count < 64; i++ ) {
+		if ( asDefend[i]->inuse && AS_DefendActive( asDefend[i] ) ) {
+			for ( k = count; k > 0 && spots[k - 1]->count > asDefend[i]->count; k-- ) {
+				spots[k] = spots[k - 1];
+			}
+			spots[k] = asDefend[i];
+			count++;
+		}
+	}
+	if ( !count ) {
+		while ( ( spot = G_Find( spot, FOFS( classname ), "info_oax_assault_spawn" ) ) != NULL && count < 64 ) {
+			if ( spot->count == 1 && AS_SpawnActive( spot ) ) {
+				spots[count++] = spot;
+			}
+		}
+	}
+	for ( i = 0; i < count && i < max; i++ ) {
+		VectorCopy( spots[i]->s.origin, out[i] );
+		out[i][2] -= 24;
+	}
+	return i;
+}
+
 qboolean G_OAXAssaultGuardSpot( int n, vec3_t point ) {
 	gentity_t *spots[64], *spot = NULL;
 	int count = 0, i, k;

@@ -191,6 +191,7 @@ void SP_func_oax_objective(gentity_t *ent);
 void SP_info_oax_assault_spawn(gentity_t *ent);
 void SP_info_oax_assault(gentity_t *ent);
 void SP_info_oax_assault_defend(gentity_t *ent);
+void SP_info_oax_assault_attack(gentity_t *ent);
 void SP_target_oax_shake(gentity_t *ent);
 void SP_target_oax_explosion(gentity_t *ent);
 void SP_trigger_oax_artillery(gentity_t *ent);
@@ -285,6 +286,7 @@ spawn_t	spawns[] = {
 	// oax map scripting and portals (g_oax_triggers.c, g_oax_portal.c)
 	{"target_oax_script", SP_target_oax_script},
 	{"trigger_oax_count", SP_trigger_oax_count},
+	{"target_oax_counter", SP_trigger_oax_count},	/* UE1 Counter: the same (fires after "count" uses) */
 	{"trigger_oax_timer", SP_trigger_oax_timer},
 	{"trigger_oax_entityname", SP_trigger_oax_entityname},
 	{"target_oax_setkeyval", SP_target_oax_setkeyval},
@@ -303,6 +305,7 @@ spawn_t	spawns[] = {
 	{"info_oax_assault_spawn", SP_info_oax_assault_spawn},	/* Assault spawn point */
 	{"info_oax_assault", SP_info_oax_assault},	/* Assault settings */
 	{"info_oax_assault_defend", SP_info_oax_assault_defend},	/* Assault defending bot post */
+	{"info_oax_assault_attack", SP_info_oax_assault_attack},	/* Assault attacking bot firing spot */
 	{"target_oax_shake", SP_target_oax_shake},	/* battlefield entities (g_oax_battle.c) */
 	{"target_oax_explosion", SP_target_oax_explosion},
 	{"trigger_oax_artillery", SP_trigger_oax_artillery},

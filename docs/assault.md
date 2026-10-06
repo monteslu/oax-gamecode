@@ -63,7 +63,7 @@ after the round does.
 climbing to a walled fortress, with three objectives:
 1. The gate generator, which opens the gate.
 2. The keep controls, held for 5 seconds, which open the keep.
-3. The reactor core.
+3. The golden cow.
 
 With the vehicle rule (`g_oaxVehicles 1`), the attackers also get a buggy and
 a hover craft.
@@ -117,10 +117,45 @@ Optional. Holds the map's Assault settings.
 A map lists the mode in its arena file (`type "assault"`) so that the start
 server menu offers it.
 
-Doors and other movers are not obstacles to the navmesh. Lay out the stages so
-that bots never need to path through a door that is still shut. On the example
-map, each stage's objective and spawns are on the near side of the door that
-the stage opens.
+### info_oax_assault_defend
+
+A defending bot's post (UT's DefensePoint). Bots take the active posts in
+priority order, spread by rank, skipping posts they have no complete path to
+(behind a door still shut, or off the navmesh).
+
+| Key | Meaning |
+| --- | --- |
+| `objective` | an objective id: the post is held while that objective is not done |
+| `priority` | lower first (default 0) |
+| `after`, `until` | objective ids, as for spawns |
+
+### info_oax_assault_attack
+
+Where attacking bots stand to shoot a `destroy` objective: a target on a wall
+that is shot from across a moat, say. Without any, bots go to the walkable
+floor nearest the target and shoot from there.
+
+| Key | Meaning |
+| --- | --- |
+| `objective` | the objective's id |
+| `priority` | lower first (default 0); only the lowest priority present is used |
+
+### Doors, switches and counters
+
+A door or other mover that an objective opens (the objective's `target`,
+followed through relays, delays, `target_oax_counter` and the `event` of
+a `func_oax_mover`) is an obstacle to the bots' navmesh while it still sits
+at its spawn pose: bots route around it (a moat instead of a shut gate)
+rather than pressing on it, and the way through opens the moment it moves.
+The final objective's targets are not obstacles (the round is over). Movers
+that open on a trigger a player walks into (ramps, lifts) are not either:
+bots must walk there to open them. Debug: `g_nav_blocker_count`,
+`g_nav_blockers` (one digit per blocker, 1 closed).
+
+UE1-style chains work as in the source: a `func_oax_mover` with `event`
+uses that targetname when it reaches its last key (a switch that throws the
+doors once it has turned); `target_oax_counter` with `count` N uses its
+targets on the N-th use (a portcullis that rises once both chains are shot).
 
 ## Settings
 
