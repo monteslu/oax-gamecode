@@ -186,12 +186,19 @@ static int G_OAXNavFloor( const vec3_t origin, float range, vec3_t feet ) {
 static void G_OAXNavSkip( const char *what, gentity_t *ent, const char *end, const char *why ) {
 	char item[96];
 
+	char at[48];
+
 	navNumSkipped++;
-	Com_sprintf( item, sizeof( item ), "%s%s#%i %s: %s", navSkipped[0] ? "; " : "", what, ent ? ent->s.number : -1, end, why );
+	/* where: the entity's origin, so a map tool can find the marker */
+	at[0] = 0;
+	if ( ent ) {
+		Com_sprintf( at, sizeof( at ), " at %.0f %.0f %.0f", ent->s.origin[0], ent->s.origin[1], ent->s.origin[2] );
+	}
+	Com_sprintf( item, sizeof( item ), "%s%s#%i%s %s: %s", navSkipped[0] ? "; " : "", what, ent ? ent->s.number : -1, at, end, why );
 	if ( strlen( navSkipped ) + strlen( item ) < sizeof( navSkipped ) - 1 ) {
 		Q_strcat( navSkipped, sizeof( navSkipped ), item );
 	}
-	G_Printf( "navmesh link skipped: %s#%i %s: %s\n", what, ent ? ent->s.number : -1, end, why );
+	G_Printf( "navmesh link skipped: %s#%i%s %s: %s\n", what, ent ? ent->s.number : -1, at, end, why );
 }
 
 /* the floor under a brush entity's footprint centre, searched from its top */
