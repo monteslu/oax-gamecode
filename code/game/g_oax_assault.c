@@ -767,7 +767,7 @@ static void AS_Publish( void ) {
 }
 
 void G_OAXAssaultInit( int restart ) {
-	trap_Cvar_Register( &g_oaxAssaultTime, "g_oaxAssaultTime", "0", CVAR_ARCHIVE );
+	trap_Cvar_Register( &g_oaxAssaultTime, "g_oaxAssaultTime", "0", 0 );
 	trap_Cvar_Register( &g_oaxAssaultFirst, "g_oaxAssaultFirst", "0", CVAR_ARCHIVE );
 	trap_Cvar_Register( &g_oaxAssaultState, "g_oaxAssaultState", "", CVAR_TEMP );
 	memset( &as, 0, sizeof( as ) );
