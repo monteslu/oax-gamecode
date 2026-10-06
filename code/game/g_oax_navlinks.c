@@ -56,7 +56,7 @@ pad arc that never lands) are printed and listed in g_nav_links_skipped.
 
 Debug values: g_nav_links (links submitted), g_nav_links_pingpong
 (teleporters left out because the arrival would re-trigger), g_nav_hazards,
-g_nav_link_<i> ("kind sx sy sz ex ey ez" for the first 16 links).
+g_nav_link_<i> ("kind sx sy sz ex ey ez" for the first 40 links).
 ===========================================================================
 */
 #include "g_local.h"
@@ -222,7 +222,7 @@ static void G_OAXNavAdd( int kind, const vec3_t start, const vec3_t end, float r
 	VectorCopy( end, navLinks[idx].end );
 	navLinks[idx].ent = ent;
 	navLinks[idx].radius = radius > 0 ? radius : 32.0f;
-	if ( idx < 16 ) {
+	if ( idx < 40 ) {
 		BG_OAXDebugSet( va( "g_nav_link_%i", idx ), va( "%s %i %i %i %i %i %i", G_OAXNavKindName( kind ),
 			(int)start[0], (int)start[1], (int)start[2], (int)end[0], (int)end[1], (int)end[2] ) );
 	}
