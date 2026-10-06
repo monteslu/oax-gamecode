@@ -51,6 +51,7 @@ typedef struct {
 	vec3_t  currentDir;
 	float   currentSpeed;
 	float   currentAccel;   /* "ca" */
+	int     currentWalk;    /* "cw": the current also drags players walking on the ground */
 
 	float   frictionScale;  /* "f": scales ground/water friction, 1 = stock */
 

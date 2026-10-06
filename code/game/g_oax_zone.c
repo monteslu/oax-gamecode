@@ -32,6 +32,8 @@ Keys:
   gravity_scale    a scale of the level's gravity
   current          "x y z" ups the zone pulls airborne and swimming players to
   current_accel    how hard it pulls (like sv_airaccelerate), default 1
+  current_walk     1: the current drags walking players too (default 0:
+                   airborne and swimming only)
   friction_scale   scales ground and water friction, default 1
   fog_color        "r g b" 0..1 view fog while the eye is inside, with
   fog_density, fog_start, fog_end
@@ -73,6 +75,7 @@ static const char *zoneKeys[][2] = {
 	{ "gravity_scale", "gs" },
 	{ "current", "c" },
 	{ "current_accel", "ca" },
+	{ "current_walk", "cw" },
 	{ "friction_scale", "f" },
 	{ "fog_color", "fc" },
 	{ "fog_density", "fd" },

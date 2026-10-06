@@ -82,6 +82,7 @@ void PM_AddTouchEnt( int entityNum );
 void PM_OAXZoneBegin( void );
 void PM_OAXZoneEnd( void );
 void PM_OAXZoneCurrent( void );
+void PM_OAXZoneCurrentWalk( void );
 float PM_OAXZoneFriction( void );
 int PM_OAXLadder( void );
 void PM_OAXLadderMove( void );

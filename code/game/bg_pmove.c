@@ -837,6 +837,7 @@ static void PM_WalkMove( void )
 	}
 
 	PM_Accelerate (wishdir, wishspeed, accelerate);
+	PM_OAXZoneCurrentWalk();	// oax: a zone with current_walk drags walkers too
 
 	if ( ( pml.groundTrace.surfaceFlags & SURF_SLICK ) || pm->ps->pm_flags & PMF_TIME_KNOCKBACK ) {
 		pm->ps->velocity[2] -= pm->ps->gravity * pml.frametime;

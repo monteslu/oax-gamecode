@@ -106,6 +106,7 @@ void BG_OAXZoneParse( int slot, const char *info ) {
 		VectorCopy( z->current, z->currentDir );
 		z->currentSpeed = VectorNormalize( z->currentDir );
 		z->currentAccel = BG_OAXZoneFloat( info, "ca", 1.0f );
+		z->currentWalk = BG_OAXZoneFloat( info, "cw", 0.0f ) != 0.0f;
 
 		z->frictionScale = BG_OAXZoneFloat( info, "f", 1.0f );
 
@@ -228,9 +229,18 @@ PM_OAXZoneCurrent
 
 The zone's current pulls the velocity toward "current" at current_accel,
 the way PM_Accelerate pulls toward the wish velocity (the q2 form, whatever
-dmflags say, so a current never touches the other axes).
+dmflags say, so a current never touches the other axes). Airborne and
+swimming players always; walking ones only in a zone with "current_walk"
+(UE1's ZoneVelocity drags pawns along the ground too: a wind on a train's
+roof), against the ground friction, so they drift rather than slide.
 =================
 */
+void PM_OAXZoneCurrentWalk( void ) {
+	if ( pml.oaxZone && bg_oaxZones[pml.oaxZone - 1].currentWalk ) {
+		PM_OAXZoneCurrent();
+	}
+}
+
 void PM_OAXZoneCurrent( void ) {
 	const bgOAXZone_t *z;
 	float              addspeed, accelspeed, currentspeed;
