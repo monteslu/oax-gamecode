@@ -577,9 +577,15 @@ qboolean G_BotConnect( int clientNum, qboolean restart ) {
 	Q_strncpyz( settings.characterfile, Info_ValueForKey( userinfo, "characterfile" ), sizeof(settings.characterfile) );
 	settings.skill = atof( Info_ValueForKey( userinfo, "skill" ) );
 
-	/* oax: without AAS, a bot that paths on the navmesh (g_oax_navbot.c) */
-	if ( !trap_AAS_Initialized() && G_OAXNavBotConnect( clientNum, settings.skill ) ) {
+	/* oax: a bot that paths on the navmesh (g_oax_navbot.c) wherever those
+	   bots are active: without AAS, and in Assault even with it (the stock
+	   bots know nothing of objectives); G_OAXNavBotsActive decides */
+	if ( G_OAXNavBotConnect( clientNum, settings.skill ) ) {
 		return qtrue;
+	}
+	if ( !trap_AAS_Initialized() || g_gametype.integer == GT_ASSAULT ) {
+		G_Printf( "bot %i: not a navmesh bot (AAS %i, nav feature %i, navmesh %i)\n", clientNum,
+			trap_AAS_Initialized(), BG_OAXFeature( "nav" ), trap_OAX_NavStatus() );
 	}
 
 	if (!trap_AAS_Initialized() || !BotAISetupClient( clientNum, &settings, restart )) {
