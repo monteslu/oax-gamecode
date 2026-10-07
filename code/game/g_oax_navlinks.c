@@ -82,6 +82,12 @@ typedef struct {
 } navBlocker_t;
 static navBlocker_t	navBlockers[NAV_MAX_BLOCKERS];
 static int			numNavBlockers;
+/* navmesh floor: movers with "navfloor" that stand still at their spawn
+   pose until the game moves them (a landing deck, a ramp): in the mesh
+   while there, out once they move (G_OAXNavFloors) */
+#define NAV_MAX_FLOORS	64
+static navBlocker_t	navFloors[NAV_MAX_FLOORS];
+static int			numNavFloors;
 static byte				navCostSet[MAX_GENTITIES];
 /* why the last G_OAXNavFloor failed: "solid", "no floor", "steep" */
 static const char *navFloorWhy;
@@ -105,6 +111,7 @@ void G_OAXNavLinksInit( void ) {
 	numNavLinks = 0;
 	navLinksBuilt = 0;
 	numNavBlockers = 0;
+	numNavFloors = 0;
 	navSkipped[0] = 0;
 	navNumSkipped = 0;
 	navFloorWhy = "";
@@ -590,6 +597,38 @@ static void G_OAXNavBlockTargets( const char *name, int depth ) {
 	}
 }
 
+/* movers with "navfloor": each brush piece of the mover (and its team) is
+   floor at its spawn pose; blockers are left out (a door is an obstacle,
+   not a floor) */
+static int G_OAXNavFloors( void ) {
+	gentity_t *m;
+	int i, k;
+
+	for ( i = MAX_CLIENTS; i < level.num_entities && numNavFloors < NAV_MAX_FLOORS; i++ ) {
+		m = &g_entities[i];
+		if ( !m->inuse || m->s.eType != ET_MOVER || !m->s.modelindex ) {
+			continue;
+		}
+		if ( !m->oaxNavFloor && !( m->teammaster && m->teammaster->oaxNavFloor ) ) {
+			continue;
+		}
+		for ( k = 0; k < numNavBlockers && navBlockers[k].ent != i; k++ ) {
+		}
+		if ( k < numNavBlockers ) {
+			continue;	/* an obstacle already */
+		}
+		navFloors[numNavFloors].ent = i;
+		VectorCopy( m->r.currentOrigin, navFloors[numNavFloors].origin );
+		VectorCopy( m->r.currentAngles, navFloors[numNavFloors].angles );
+		navFloors[numNavFloors].index = trap_OAX_NavAddModel( m->s.modelindex, m->r.currentOrigin );
+		navFloors[numNavFloors].on = 1;
+		if ( navFloors[numNavFloors].index >= 0 ) {
+			numNavFloors++;
+		}
+	}
+	return numNavFloors;
+}
+
 static int G_OAXNavBlockers( void ) {
 	gentity_t *e = NULL;
 
@@ -602,22 +641,49 @@ static int G_OAXNavBlockers( void ) {
 }
 
 /* each frame: a blocker is on while its mover sits at its spawn pose */
+/* is the mover still at the spawn pose it was registered at? */
+static int G_OAXNavAtPose( const navBlocker_t *b ) {
+	const gentity_t *m = &g_entities[b->ent];
+
+	return m->inuse && Distance( m->r.currentOrigin, b->origin ) < 1.0f &&
+		fabs( AngleSubtract( m->r.currentAngles[0], b->angles[0] ) ) < 1.0f &&
+		fabs( AngleSubtract( m->r.currentAngles[1], b->angles[1] ) ) < 1.0f &&
+		fabs( AngleSubtract( m->r.currentAngles[2], b->angles[2] ) ) < 1.0f;
+}
+
 static void G_OAXNavBlockersFrame( void ) {
-	int i, changed = 0;
+	int i, changed = 0, floorsChanged = 0;
 
 	for ( i = 0; i < numNavBlockers; i++ ) {
 		navBlocker_t *b = &navBlockers[i];
-		gentity_t *m = &g_entities[b->ent];
-		int at = m->inuse && Distance( m->r.currentOrigin, b->origin ) < 1.0f &&
-			fabs( AngleSubtract( m->r.currentAngles[0], b->angles[0] ) ) < 1.0f &&
-			fabs( AngleSubtract( m->r.currentAngles[1], b->angles[1] ) ) < 1.0f &&
-			fabs( AngleSubtract( m->r.currentAngles[2], b->angles[2] ) ) < 1.0f;
+		int at = G_OAXNavAtPose( b );
 
 		if ( at != b->on ) {
 			b->on = at;
 			trap_OAX_NavSetBlocker( b->index, at );
 			changed++;
 		}
+	}
+	for ( i = 0; i < numNavFloors; i++ ) {
+		navBlocker_t *b = &navFloors[i];
+		int at = G_OAXNavAtPose( b );
+
+		if ( at != b->on ) {
+			b->on = at;
+			trap_OAX_NavSetModel( b->index, at );
+			floorsChanged++;
+		}
+	}
+	if ( floorsChanged || ( level.framenum % 20 ) == 0 ) {
+		char buf[128];
+		int n = 0;
+
+		buf[0] = 0;
+		for ( i = 0; i < numNavFloors && n < (int)sizeof( buf ) - 8; i++ ) {
+			buf[n++] = navFloors[i].on ? '1' : '0';
+			buf[n] = 0;
+		}
+		BG_OAXDebugSet( "g_nav_floors", numNavFloors ? buf : "-" );
 	}
 	if ( changed || ( level.framenum % 20 ) == 0 ) {
 		char buf[128];
@@ -653,6 +719,7 @@ void G_OAXNavLinksFrame( void ) {
 	G_OAXNavRouteLinks();
 	hazards = G_OAXNavHazards();
 	blockers = G_OAXNavBlockers();
+	BG_OAXDebugSetInt( "g_nav_floor_count", G_OAXNavFloors() );
 	polys = trap_OAX_NavCommit();
 	BG_OAXDebugSetInt( "g_nav_blocker_count", blockers );
 	BG_OAXDebugSetInt( "g_nav_links", numNavLinks );

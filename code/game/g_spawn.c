@@ -111,6 +111,7 @@ field_t fields[] = {
 	{"wait", FOFS(wait), F_FLOAT},
 	{"random", FOFS(random), F_FLOAT},
 	{"count", FOFS(count), F_INT},
+	{"navfloor", FOFS(oaxNavFloor), F_INT},		/* a mover at rest is navmesh floor (docs/navigation.md) */
 	{"health", FOFS(health), F_INT},
 	{"light", 0, F_IGNORE},
 	{"dmg", FOFS(damage), F_INT},

@@ -92,6 +92,7 @@ struct gentity_s {
 	qboolean	inuse;
 
 	char		*classname;			// set in QuakeEd
+	int			oaxNavFloor;		// "navfloor" key: this mover at rest is navmesh floor (g_oax_navlinks.c)
 	int			spawnflags;			// set in QuakeEd
 
 	qboolean	neverFree;			// if true, FreeEntity will only unlink

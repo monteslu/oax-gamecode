@@ -64,6 +64,8 @@ int trap_OAX_NavAddArea( const vec3_t mins, const vec3_t maxs, float cost );
 int trap_OAX_NavCommit( void );
 int trap_OAX_NavAddBlocker( const vec3_t mins, const vec3_t maxs );
 int trap_OAX_NavSetBlocker( int index, int on );
+int trap_OAX_NavAddModel( int modelIndex, const vec3_t origin );
+int trap_OAX_NavSetModel( int index, int on );
 int trap_OAX_NavFindPathEx( const vec3_t start, const vec3_t goal, float *points, int *links, int maxPoints, int *flags,
 	int include, int exclude );
 

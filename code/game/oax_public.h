@@ -72,6 +72,8 @@ shipped; each feature owns a block.
 #define G_OAX_NAV_FINDPATHEX    1097  /* ( start, goal, float *points, int *links, int max, int *flags, int include, int exclude ) */
 #define G_OAX_NAV_ADDBLOCKER    1098  /* ( mins, maxs ) -> blocker index, -1 full: a navmesh obstacle (queued for COMMIT; on after it) */
 #define G_OAX_NAV_SETBLOCKER    1099  /* ( int index, int on ) -> tiles rebuilt */
+#define G_OAX_NAV_ADDMODEL      1110  /* ( int modelIndex, const vec3_t origin ) -> model index, -1 full: an inline model as floor at that origin (queued for COMMIT) */
+#define G_OAX_NAV_SETMODEL      1111  /* ( int index, int on ) -> tiles rebuilt: the model in the mesh (at rest) or out */
 #define G_OAX_ENT_BASE      1100  /* 1100-1109 entity collision, token "ent_obb" */
 #define G_OAX_ENT_SET_OBB       1100  /* ( int entnum, const float *obb or NULL ): the entity collides as an oriented box:
                                          center[3] (from r.currentOrigin), axis[3][3], halfExtents[3] */
