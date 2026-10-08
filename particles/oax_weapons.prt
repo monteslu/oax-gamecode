@@ -79,6 +79,7 @@ particle oax/impact_smoke {
 		fadeOut				0.7
 		color				0.55 0.55 0.55 0.6
 		fadeColor			0.55 0.55 0.55 0
+		lit					1
 	}
 }
 

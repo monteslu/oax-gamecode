@@ -59,6 +59,7 @@ particle oax/dust_puff {
 		fadeOut				0.7
 		color				0.62 0.56 0.47 0.7
 		fadeColor			0.62 0.56 0.47 0
+		lit					1
 	}
 	{
 		count				5
@@ -76,6 +77,7 @@ particle oax/dust_puff {
 		fadeOut				0.6
 		color				0.35 0.3 0.25 0.9
 		fadeColor			0.35 0.3 0.25 0
+		lit					1
 	}
 }
 
@@ -114,6 +116,7 @@ particle oax/fireball {
 		fadeOut				0.75
 		color				0.16 0.15 0.14 0.7
 		fadeColor			0.12 0.12 0.12 0
+		lit					1
 	}
 }
 
@@ -135,6 +138,7 @@ particle oax/debris {
 		fadeOut				0.5
 		color				0.3 0.26 0.22 1
 		fadeColor			0.3 0.26 0.22 0
+		lit					1
 	}
 }
 
@@ -210,6 +214,25 @@ particle oax/flame {
 		fadeOut				0.6
 		color				0.14 0.13 0.12 0.45
 		fadeColor			0.14 0.13 0.12 0
+		lit					1
+	}
+	{
+		count				6
+		material			oaxfx/haze
+		time				1.6
+		bunching			1
+		distribution		cylinder 6 6 2
+		direction			cone 8
+		speed				"60" to "30"
+		size				"24" to "56"
+		rotation			"20" to "60"
+		gravity				world -18
+		fadeIn				0.2
+		fadeOut				0.6
+		color				1 1 1 0.8
+		fadeColor			1 1 1 0
+		distort				0.025
+		softDistance		-1
 	}
 }
 
@@ -246,5 +269,72 @@ particle oax/flame_small {
 		fadeOut				0.6
 		color				0.15 0.14 0.13 0.35
 		fadeColor			0.15 0.14 0.13 0
+		lit					1
+	}
+}
+
+// weather (loop; for func_oax_emitter, placed by `oacontent weather`): a column
+// of falling streaks. Particles do not collide with the world: the emitters
+// sit over exposed ground only.
+particle oax/rain {
+	{
+		count				1800
+		material			oaxfx/spark
+		time				0.9
+		bunching			1
+		distribution		cylinder 560 560 40
+		direction			cone 3
+		orientation			aimed 0 0.025
+		speed				"-1000" to "-900"
+		size				"2.2" to "1.6"
+		gravity				0
+		fadeIn				0.05
+		fadeOut				0.1
+		color				0.5 0.6 0.75 0.7
+		fadeColor			0.5 0.6 0.75 0.7
+		softDistance		-1
+	}
+}
+
+particle oax/snow {
+	{
+		count				1200
+		material			oaxfx/smoke
+		time				7
+		bunching			1
+		distribution		cylinder 560 560 40
+		direction			cone 12
+		speed				"-60" to "-35"
+		size				"1.8" to "1.2"
+		rotation			"0"
+		gravity				world 0
+		fadeIn				0.03
+		fadeOut				0.05
+		color				0.95 0.97 1 0.8
+		fadeColor			0.95 0.97 1 0.8
+		softDistance		-1
+		lit					1
+	}
+}
+
+// a column of shimmering air (loop): over fire, exhaust, hot metal
+particle oax/heat_haze {
+	{
+		count				10
+		material			oaxfx/haze
+		time				1.4
+		bunching			1
+		distribution		cylinder 8 8 2
+		direction			cone 10
+		speed				"46" to "24"
+		size				"26" to "64"
+		rotation			"20" to "70"
+		gravity				world -20
+		fadeIn				0.15
+		fadeOut				0.6
+		color				1 1 1 0.9
+		fadeColor			1 1 1 0
+		distort				0.03
+		softDistance		-1
 	}
 }

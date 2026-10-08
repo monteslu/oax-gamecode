@@ -116,3 +116,17 @@ oaxfx/vignette
 		alphaGen vertex
 	}
 }
+
+// heat haze (particle stage `distort`): the stage shows the scene behind it
+// shifted; the blend weights it by the particle's alpha
+oaxfx/haze
+{
+	nopicmip
+	cull none
+	{
+		map *oaxsoft
+		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		rgbGen vertex
+		alphaGen vertex
+	}
+}
