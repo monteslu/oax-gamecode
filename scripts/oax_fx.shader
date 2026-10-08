@@ -101,3 +101,18 @@ oaxfx/tread
 		alphaGen vertex
 	}
 }
+
+// hurt and low-health feedback (cg_oax_fx.c CG_OAXDamageFx): the colour and
+// alpha come from the cgame, the edge falloff from the image
+oaxfx/vignette
+{
+	nopicmip
+	nomipmaps
+	cull none
+	{
+		map *oaxvignette
+		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		rgbGen vertex
+		alphaGen vertex
+	}
+}

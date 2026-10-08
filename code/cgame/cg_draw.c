@@ -3570,6 +3570,12 @@ static void CG_Draw2D(stereoFrame_t stereoFrame) {
 		return;
 	}
 
+	// oax: hurt and low-health vignette (cg_oaxDamageFx), drawn even with the
+	// HUD off: it is feedback, not a HUD element
+	if (cg.snap->ps.pm_type != PM_INTERMISSION) {
+		CG_OAXDamageFx();
+	}
+
 	if (cg_draw2D.integer == 0) {
 		return;
 	}

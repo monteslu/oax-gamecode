@@ -124,6 +124,8 @@ static cgTrack_t    tracks[CG_TRACK_SLOTS];
 static int          ripplesMade, tracksMade;
 
 static void CG_OAXGroundFxInit( void );
+static vmCvar_t     cg_oaxDamageFx, cg_oaxTestDamage;
+static qhandle_t    vignetteShader;
 static void CG_OAXPlayerRipples( void );
 
 /*
@@ -173,6 +175,9 @@ void CG_OAXFxInit( void ) {
 	trap_Cvar_Register( &cg_oaxTrails, "cg_oaxTrails", "1", CVAR_ARCHIVE );
 	trap_Cvar_Register( &cg_oaxTestTrail, "cg_oaxTestTrail", "", CVAR_CHEAT );
 	trap_Cvar_Register( &cg_oaxGroundFx, "cg_oaxGroundFx", "1", CVAR_ARCHIVE );
+	trap_Cvar_Register( &cg_oaxDamageFx, "cg_oaxDamageFx", "1", CVAR_ARCHIVE );
+	trap_Cvar_Register( &cg_oaxTestDamage, "cg_oaxTestDamage", "0", CVAR_CHEAT );
+	vignetteShader = trap_R_RegisterShaderNoMip( "oaxfx/vignette" );
 
 	memset( cgFx, 0, sizeof( cgFx ) );
 	nextFx = fxCounter = 0;
@@ -806,6 +811,53 @@ void CG_OAXSplash( const vec3_t surface, float scale ) {
 	vec3_t up = { 0, 0, 1 };
 
 	CG_OAXSpawnFx( fxSplash, surface, up, scale, NULL );
+}
+
+/*
+=================
+CG_OAXDamageFx
+
+Hurt feedback: a red vignette flashes when the player takes damage (the
+harder the hit, the stronger, fading over a second) and pulses slowly while
+health is low. cg_oaxDamageFx 0 turns it off; cg_oaxTestDamage (cheat) pins
+the strength for render tests. Both run off cg.time.
+=================
+*/
+void CG_OAXDamageFx( void ) {
+	float a = 0, hurt = 0, low = 0, c[4];
+	int health;
+
+	if ( !vignetteShader ) {
+		return;
+	}
+	trap_Cvar_Update( &cg_oaxDamageFx );
+	trap_Cvar_Update( &cg_oaxTestDamage );
+	if ( cg_oaxTestDamage.value > 0 ) {
+		a = cg_oaxTestDamage.value;
+	} else if ( cg_oaxDamageFx.integer && cg.snap ) {
+		health = cg.snap->ps.stats[STAT_HEALTH];
+		if ( health <= 0 ) {
+			return;
+		}
+		if ( cg.damageTime && cg.time - cg.damageTime < 1000 ) {
+			hurt = 0.35f + 0.4f * ( cg.damageValue > 40 ? 1.0f : cg.damageValue / 40.0f );
+			hurt *= 1.0f - ( cg.time - cg.damageTime ) / 1000.0f;
+		}
+		if ( health <= 30 ) {
+			low = 0.25f + 0.1f * sin( cg.time * 0.006f ) + 0.2f * ( 30 - health ) / 30.0f;
+		}
+		a = hurt > low ? hurt : low;
+	}
+	if ( a <= 0.01f ) {
+		return;
+	}
+	c[0] = 0.85f;
+	c[1] = 0.02f;
+	c[2] = 0.02f;
+	c[3] = a > 1.0f ? 1.0f : a;
+	trap_R_SetColor( c );
+	trap_R_DrawStretchPic( 0, 0, cgs.glconfig.vidWidth, cgs.glconfig.vidHeight, 0, 0, 1, 1, vignetteShader );
+	trap_R_SetColor( NULL );
 }
 
 /*
