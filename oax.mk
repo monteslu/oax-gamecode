@@ -86,8 +86,8 @@ OAX_SCRIPT_FILES = $(wildcard script/*.script)
 OAX_SCRIPT_OUT = $(OAX_SCRIPT_FILES:%=$(B)/$(BASEGAME)/%)
 
 # Effect data the cgame uses: particle decls (particles/*.prt)
-# and their shaders (scripts/*.shader), copied the same way.
-OAX_FX_FILES = $(wildcard particles/*.prt) $(wildcard scripts/*.shader)
+# and their shaders and tables (scripts/*.shader, scripts/*.table), copied the same way.
+OAX_FX_FILES = $(wildcard particles/*.prt) $(wildcard scripts/*.shader) $(wildcard scripts/*.table)
 OAX_FX_OUT = $(OAX_FX_FILES:%=$(B)/$(BASEGAME)/%)
 
 ifneq ($(BUILD_GAME_QVM),0)
@@ -102,6 +102,11 @@ $(B)/$(BASEGAME)/particles/%.prt: particles/%.prt
 	$(Q)cp $< $@
 
 $(B)/$(BASEGAME)/scripts/%.shader: scripts/%.shader
+	@mkdir -p $(dir $@)
+	$(echo_cmd) "CP $@"
+	$(Q)cp $< $@
+
+$(B)/$(BASEGAME)/scripts/%.table: scripts/%.table
 	@mkdir -p $(dir $@)
 	$(echo_cmd) "CP $@"
 	$(Q)cp $< $@

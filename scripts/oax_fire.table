@@ -1,0 +1,4 @@
+// oax_fire.table: the brightness of a flame's light over time, for a light's
+// oax_effect (oax_effect oax_fire <rate> <phase> <base> <amp>): an uneven
+// flutter, interpolated, never dark.
+table oax_fire { { 0.85, 1.0, 0.7, 0.95, 0.8, 1.0, 0.62, 0.9, 1.0, 0.75, 0.9, 0.66 } }

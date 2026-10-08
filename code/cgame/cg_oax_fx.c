@@ -100,6 +100,7 @@ static int          numMapTrails;
 
 /* weapon effects */
 static int          fxSparks, fxSmoke, fxExplosion, fxPlasma, fxRail, fxBulletSparks;
+static int          fxMetalSparks, fxDustPuff, fxFireball, fxDebris, fxShockwave;
 static qhandle_t    trailSmokeShader, trailGlowShader;
 static int          decalsMade, fxSpawned;
 
@@ -189,6 +190,7 @@ void CG_OAXFxInit( void ) {
 	decalsMade = fxSpawned = 0;
 
 	fxSparks = fxSmoke = fxExplosion = fxPlasma = fxRail = fxBulletSparks = 0;
+	fxMetalSparks = fxDustPuff = fxFireball = fxDebris = fxShockwave = 0;
 	if ( haveParticles ) {
 		fxSparks = RegisterFx( "oax/impact_sparks" );
 		fxBulletSparks = RegisterFx( "oax/bullet_sparks" );
@@ -196,6 +198,11 @@ void CG_OAXFxInit( void ) {
 		fxExplosion = RegisterFx( "oax/explosion" );
 		fxPlasma = RegisterFx( "oax/plasma_impact" );
 		fxRail = RegisterFx( "oax/rail_impact" );
+		fxMetalSparks = RegisterFx( "oax/metal_sparks" );
+		fxDustPuff = RegisterFx( "oax/dust_puff" );
+		fxFireball = RegisterFx( "oax/fireball" );
+		fxDebris = RegisterFx( "oax/debris" );
+		fxShockwave = RegisterFx( "oax/shockwave" );
 	}
 	CG_OAXGroundFxInit();
 	if ( haveTrails ) {
@@ -251,7 +258,7 @@ CG_OAXImpactFx
 From CG_MissileHitWall: the particle part of a weapon impact.
 =================
 */
-void CG_OAXImpactFx( int weapon, const vec3_t origin, const vec3_t dir, const float *color ) {
+void CG_OAXImpactFx( int weapon, const vec3_t origin, const vec3_t dir, const float *color, int soundType ) {
 	float tint[4];
 
 	if ( !haveParticles || !cg_oaxParticles.integer ) {
@@ -262,6 +269,11 @@ void CG_OAXImpactFx( int weapon, const vec3_t origin, const vec3_t dir, const fl
 	case WP_GRENADE_LAUNCHER:
 	case WP_BFG:
 		CG_OAXSpawnFx( fxExplosion, origin, dir, 1.0f, NULL );
+		CG_OAXSpawnFx( fxFireball, origin, dir, weapon == WP_BFG ? 1.5f : 1.0f, NULL );
+		CG_OAXSpawnFx( fxShockwave, origin, dir, weapon == WP_BFG ? 1.5f : 1.0f, NULL );
+		if ( soundType != IMPACTSOUND_FLESH ) {
+			CG_OAXSpawnFx( fxDebris, origin, dir, 1.0f, NULL );
+		}
 		CG_OAXSpawnFx( fxSmoke, origin, dir, 1.6f, NULL );
 		break;
 	case WP_PLASMAGUN:
@@ -281,8 +293,14 @@ void CG_OAXImpactFx( int weapon, const vec3_t origin, const vec3_t dir, const fl
 	case WP_MACHINEGUN:
 	case WP_CHAINGUN:
 	case WP_SHOTGUN:
-		CG_OAXSpawnFx( fxBulletSparks, origin, dir, 1.0f, NULL );
-		CG_OAXSpawnFx( fxSmoke, origin, dir, 0.5f, NULL );
+		/* by what the bullet hit: metal throws bright sparks, flesh nothing (its
+		   own blood effect), everything else dust and a few chips */
+		if ( soundType == IMPACTSOUND_METAL ) {
+			CG_OAXSpawnFx( fxMetalSparks, origin, dir, 1.0f, NULL );
+		} else if ( soundType != IMPACTSOUND_FLESH ) {
+			CG_OAXSpawnFx( fxBulletSparks, origin, dir, 0.6f, NULL );
+			CG_OAXSpawnFx( fxDustPuff, origin, dir, 1.0f, NULL );
+		}
 		break;
 	default:
 		CG_OAXSpawnFx( fxSparks, origin, dir, 1.0f, NULL );
@@ -730,6 +748,11 @@ static void CG_OAXGroundFxInit( void ) {
 			treadShader = trap_R_RegisterShader( "oaxfx/tread" );
 		}
 	}
+	/* weapon hits on water need the ring and the splash on every map */
+	if ( haveParticles && !fxRipple ) {
+		fxRipple = RegisterFx( "oax/ripple" );
+		fxSplash = RegisterFx( "oax/splash" );
+	}
 	memset( rippleTime, 0, sizeof( rippleTime ) );
 	for ( i = 0; i < CG_TRACK_SLOTS; i++ ) {
 		tracks[i].entity = -1;
@@ -783,6 +806,25 @@ void CG_OAXSplash( const vec3_t surface, float scale ) {
 	vec3_t up = { 0, 0, 1 };
 
 	CG_OAXSpawnFx( fxSplash, surface, up, scale, NULL );
+}
+
+/*
+=================
+CG_OAXWaterImpact
+
+A bullet or a missile meets a water surface at p (the trace's end): a ring
+and a splash, scaled by the weapon's size. Not tied to the map's ground
+effects switch: it is a weapon effect.
+=================
+*/
+void CG_OAXWaterImpact( const vec3_t p, float scale ) {
+	vec3_t up = { 0, 0, 1 };
+
+	if ( !haveParticles || !cg_oaxParticles.integer ) {
+		return;
+	}
+	CG_OAXRipple( p, scale );
+	CG_OAXSpawnFx( fxSplash, p, up, scale, NULL );
 }
 
 void CG_OAXGroundDust( const vec3_t at, const vec3_t normal, float scale ) {

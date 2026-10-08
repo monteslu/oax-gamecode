@@ -1,0 +1,250 @@
+// oax game code
+// Copyright (C) 2026 Luis Montes
+//
+// This file is part of the oax game code, a fork of OpenArena's gamecode.
+// It is free software; you can redistribute it and/or modify it under the
+// terms of the GNU General Public License as published by the Free Software
+// Foundation; either version 2 of the License, or (at your option) any later
+// version. The combined game code is distributed under GPLv3.
+//
+// This program is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+// or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+// for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program. If not, see <https://www.gnu.org/licenses/>.
+// oax_library.prt: the effect library (Phase 2 of the content enhancement
+// plan): per-material impacts, the big explosion pieces, and fire.
+// Syntax as oax_weapons.prt. One-shot systems are spawned by cg_oax_fx.c;
+// the flame decls loop and belong to func_oax_emitter entities.
+
+// bullets on metal: more, whiter, faster sparks
+particle oax/metal_sparks {
+	{
+		count				16
+		material			oaxfx/spark
+		time				0.35
+		cycles				1
+		bunching			0
+		distribution		sphere 1 1 1
+		direction			cone 70
+		orientation			aimed 0 0.04
+		speed				"380" to "90"
+		size				"1" to "0.4"
+		gravity				world 420
+		fadeIn				0
+		fadeOut				0.5
+		color				0.9 0.95 1 1
+		fadeColor			0 0 0 0
+		softDistance		-1
+	}
+}
+
+// bullets on stone, brick, earth: a small puff of dust, a few chips
+particle oax/dust_puff {
+	{
+		count				4
+		material			oaxfx/smoke
+		time				0.9
+		cycles				1
+		bunching			0.3
+		distribution		sphere 2 2 2
+		direction			cone 55
+		speed				"40" to "8"
+		size				"6" to "22"
+		rotation			"20" to "40"
+		gravity				world -8
+		fadeIn				0.05
+		fadeOut				0.7
+		color				0.62 0.56 0.47 0.7
+		fadeColor			0.62 0.56 0.47 0
+	}
+	{
+		count				5
+		material			oaxfx/smoke
+		time				0.6
+		cycles				1
+		bunching			0
+		distribution		sphere 1 1 1
+		direction			cone 80
+		speed				"220" to "70"
+		size				"1.6" to "1"
+		rotation			"0"
+		gravity				world 500
+		fadeIn				0
+		fadeOut				0.6
+		color				0.35 0.3 0.25 0.9
+		fadeColor			0.35 0.3 0.25 0
+	}
+}
+
+// the hot core of a big explosion
+particle oax/fireball {
+	{
+		count				7
+		material			oaxfx/glow
+		time				0.5
+		cycles				1
+		bunching			0
+		distribution		sphere 6 6 6
+		direction			cone 180
+		speed				"60" to "10"
+		size				"34" to "78"
+		rotation			"20" to "50"
+		gravity				world -30
+		fadeIn				0
+		fadeOut				0.85
+		color				0.75 0.42 0.17 1
+		fadeColor			0.5 0.12 0.03 0
+	}
+	{
+		count				9
+		material			oaxfx/smoke
+		time				2.2
+		cycles				1
+		bunching			0.2
+		distribution		sphere 10 10 10
+		direction			cone 120
+		speed				"70" to "12"
+		size				"22" to "64"
+		rotation			"15" to "30"
+		gravity				world -22
+		fadeIn				0.12
+		fadeOut				0.75
+		color				0.16 0.15 0.14 0.7
+		fadeColor			0.12 0.12 0.12 0
+	}
+}
+
+// chunks thrown out and falling
+particle oax/debris {
+	{
+		count				12
+		material			oaxfx/smoke
+		time				1.1
+		cycles				1
+		bunching			0
+		distribution		sphere 3 3 3
+		direction			cone 100
+		speed				"360" to "110"
+		size				"2.6" to "1.4"
+		rotation			"0"
+		gravity				world 650
+		fadeIn				0
+		fadeOut				0.5
+		color				0.3 0.26 0.22 1
+		fadeColor			0.3 0.26 0.22 0
+	}
+}
+
+// a ring of light racing out along the surface
+particle oax/shockwave {
+	{
+		count				1
+		material			oaxfx/ripple
+		time				0.38
+		cycles				1
+		bunching			0
+		distribution		sphere 0 0 0
+		direction			cone 0
+		orientation			z
+		speed				"0"
+		size				"12" to "170"
+		rotation			"0"
+		gravity				0
+		fadeIn				0
+		fadeOut				0.9
+		color				1 0.8 0.5 0.65
+		fadeColor			1 0.5 0.2 0
+		softDistance		-1
+	}
+}
+
+// fire: flames, embers and a smoke tail (loop; for func_oax_emitter)
+particle oax/flame {
+	{
+		count				18
+		material			oaxfx/glow
+		time				0.8
+		bunching			1
+		distribution		cylinder 5 5 2
+		direction			cone 10
+		speed				"46" to "24"
+		size				"15" to "4"
+		rotation			"0" to "40"
+		gravity				world -18
+		fadeIn				0.1
+		fadeOut				0.7
+		color				1 0.55 0.15 1
+		fadeColor			0.6 0.1 0.02 0
+	}
+	{
+		count				5
+		material			oaxfx/spark
+		time				1.4
+		bunching			1
+		distribution		cylinder 6 6 2
+		direction			cone 25
+		speed				"60" to "25"
+		size				"1.1" to "0.5"
+		gravity				world -25
+		fadeIn				0
+		fadeOut				0.6
+		color				1 0.7 0.25 1
+		fadeColor			0 0 0 0
+		softDistance		-1
+	}
+	{
+		count				6
+		material			oaxfx/smoke
+		time				2.4
+		bunching			1
+		distribution		cylinder 4 4 2
+		direction			cone 14
+		speed				"34" to "16"
+		size				"8" to "30"
+		rotation			"10" to "20"
+		gravity				world -14
+		fadeIn				0.3
+		fadeOut				0.6
+		color				0.14 0.13 0.12 0.45
+		fadeColor			0.14 0.13 0.12 0
+	}
+}
+
+// a torch or candle: half the size
+particle oax/flame_small {
+	{
+		count				10
+		material			oaxfx/glow
+		time				0.6
+		bunching			1
+		distribution		cylinder 2 2 1
+		direction			cone 8
+		speed				"28" to "14"
+		size				"8" to "2"
+		rotation			"0" to "40"
+		gravity				world -12
+		fadeIn				0.1
+		fadeOut				0.7
+		color				1 0.6 0.2 1
+		fadeColor			0.6 0.12 0.02 0
+	}
+	{
+		count				3
+		material			oaxfx/smoke
+		time				1.6
+		bunching			1
+		distribution		cylinder 2 2 1
+		direction			cone 10
+		speed				"20" to "10"
+		size				"4" to "14"
+		rotation			"10" to "20"
+		gravity				world -10
+		fadeIn				0.3
+		fadeOut				0.6
+		color				0.15 0.14 0.13 0.35
+		fadeColor			0.15 0.14 0.13 0
+	}
+}

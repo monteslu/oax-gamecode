@@ -3831,7 +3831,7 @@ void CG_MissileHitWall( int weapon, int clientNum, vec3_t origin, vec3_t dir, im
 	}
 
 	// oax: particle impact effects (cg_oax_fx.c)
-	CG_OAXImpactFx( weapon, origin, dir, weapon == WP_RAILGUN ? cgs.clientinfo[clientNum].color1 : NULL );
+	CG_OAXImpactFx( weapon, origin, dir, weapon == WP_RAILGUN ? cgs.clientinfo[clientNum].color1 : NULL, soundType );
 
 	//
 	// impact mark
@@ -4209,6 +4209,7 @@ void CG_Bullet( vec3_t end, int sourceEntityNum, vec3_t normal, qboolean flesh, 
 					VectorCopy( trace.plane.normal, kapow );
 					trap_R_LFX_ParticleEffect(19, trace.endpos, kapow); // that was easy.
 				}
+				CG_OAXWaterImpact( trace.endpos, 0.6f );
 // END LEIHANCMENET
 
 
@@ -4224,6 +4225,7 @@ void CG_Bullet( vec3_t end, int sourceEntityNum, vec3_t normal, qboolean flesh, 
 					VectorCopy( trace.plane.normal, kapow );
 					trap_R_LFX_ParticleEffect(19, trace.endpos, kapow); // that was easy.
 				}
+				CG_OAXWaterImpact( trace.endpos, 0.6f );
 // END LEIHANCMENET
 			}
 

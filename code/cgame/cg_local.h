@@ -2104,7 +2104,8 @@ void CG_OAXFxInit( void );
 void CG_OAXFxFrame( void );
 void CG_OAXEmitter( centity_t *cent );
 int CG_OAXSpawnFx( int handle, const vec3_t origin, const vec3_t dir, float scale, const float *rgba );
-void CG_OAXImpactFx( int weapon, const vec3_t origin, const vec3_t dir, const float *color );
+void CG_OAXImpactFx( int weapon, const vec3_t origin, const vec3_t dir, const float *color, int soundType );
+void CG_OAXWaterImpact( const vec3_t p, float scale );
 qboolean CG_OAXDecal( qhandle_t shader, const vec3_t origin, const vec3_t dir, float orientation,
 	float r, float g, float b, float a, qboolean alphaFade, float radius );
 qboolean CG_OAXFxConsoleCommand( const char *cmd );
